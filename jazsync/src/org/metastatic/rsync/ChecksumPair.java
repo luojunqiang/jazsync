@@ -43,7 +43,6 @@ version.  */
 package org.metastatic.rsync;
 
 import java.util.Arrays;
-import org.metastatic.rsync.Util;
 
 /**
  * A pair of weak and strong checksums for use with the Rsync algorithm.

@@ -44,7 +44,6 @@
 package org.metastatic.rsync;
 
 import java.util.EventListener;
-import org.metastatic.rsync.ListenerException;
 
 /**
  * Standard interface for the checksum generator callback, called by

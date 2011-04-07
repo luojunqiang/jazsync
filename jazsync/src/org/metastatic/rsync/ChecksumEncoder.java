@@ -50,7 +50,6 @@ import java.lang.reflect.InvocationTargetException;
 
 import java.util.Iterator;
 import java.util.List;
-import org.metastatic.rsync.Configuration;
 
 /**
  * The base class of objects that encode (externalize) checksum pairs

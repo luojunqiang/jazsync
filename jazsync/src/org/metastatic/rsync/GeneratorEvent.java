@@ -43,7 +43,6 @@
 
 package org.metastatic.rsync;
 
-import org.metastatic.rsync.ChecksumPair;
 import java.util.EventObject;
 
 /**

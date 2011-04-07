@@ -41,12 +41,9 @@ to do so, delete this exception statement from your version.  */
 
 package org.metastatic.rsync;
 
-import org.metastatic.rsync.ChecksumPair;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import org.metastatic.rsync.Configuration;
-import org.metastatic.rsync.ListenerException;
 
 public class GeneratorStream {
 

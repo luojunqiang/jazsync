@@ -42,9 +42,7 @@ version.  */
 
 package org.metastatic.rsync;
 
-import org.metastatic.rsync.ChecksumPair;
 import java.util.*;
-import org.metastatic.rsync.Util;
 
 /**
  * <p>This is a "double-keyed" mapping. The first key is a 16-bit integer,

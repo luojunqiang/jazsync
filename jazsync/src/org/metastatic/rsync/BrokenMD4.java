@@ -46,8 +46,6 @@
 
 package org.metastatic.rsync;
 
-import org.metastatic.rsync.MD4;
-
 /**
  * <p>An implementation of Ron Rivest's MD4 message digest algorithm.
  * MD4 was the precursor to the stronger MD5

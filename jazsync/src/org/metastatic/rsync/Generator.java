@@ -43,7 +43,6 @@
 
 package org.metastatic.rsync;
 
-import org.metastatic.rsync.ChecksumPair;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -51,7 +50,6 @@ import java.io.InputStream;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.metastatic.rsync.Configuration;
 
 /**
  * Checksum generation methods.
