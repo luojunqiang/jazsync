@@ -10,7 +10,7 @@ import java.util.logging.Logger;
 public class SHA1 {
     private String filename;
     private FileInputStream fis;
-    private MessageDigest md;
+    private MessageDigest sha1;
     private StringBuilder sb;
 
     /**
@@ -27,17 +27,17 @@ public class SHA1 {
      */
     public String SHA1sum(){
         try {
-            md = MessageDigest.getInstance("SHA1");
+            sha1 = MessageDigest.getInstance("SHA1");
             fis = new FileInputStream(filename);
             byte[] dataBytes = new byte[1024];
 
             int read = 0;
 
             while ((read = fis.read(dataBytes)) != -1) {
-              md.update(dataBytes, 0, read);
+              sha1.update(dataBytes, 0, read);
             }
 
-            byte[] mdbytes = md.digest();
+            byte[] mdbytes = sha1.digest();
 
             //prevede byte do hex formatu
             sb = new StringBuilder("");

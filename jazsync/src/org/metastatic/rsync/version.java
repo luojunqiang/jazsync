@@ -50,5 +50,5 @@ public interface version {
 
    public static final String VERSION = "@PACKAGE_VERSION@";
 
-   public static final double VERSION_DOUBLE = @DOUBLE_VERSION@;
+   public static final double VERSION_DOUBLE = 1.3;
 }

@@ -73,7 +73,7 @@ public class Configuration implements Cloneable, java.io.Serializable {
    /**
     * The default block size.
     */
-   public static final int BLOCK_LENGTH = 700;
+   public static final int BLOCK_LENGTH = 1024;
 
    /**
     * The default chunk size.
@@ -155,9 +155,14 @@ public class Configuration implements Cloneable, java.io.Serializable {
       this.chunkSize = that.chunkSize;
    }
 
+   public int getBlock(){
+       return blockLength;
+   }
+
    // Instance methods.
    // -----------------------------------------------------------------------
 
+    @Override
    public Object clone() {
       return new Configuration(this);
    }

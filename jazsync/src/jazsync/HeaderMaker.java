@@ -1,10 +1,8 @@
 package jazsync;
 
 import java.io.File;
-import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import java.util.Date;
 
 public class HeaderMaker {
 /*
@@ -17,6 +15,10 @@ Hash-Lengths: 2,2,5
 URL: http://i.iinfo.cz/files/root/240/tinycore.iso
 SHA-1: 5944ec77b9b0f2d6b8212d142970117f5801430a
 */
+
+    /**
+     * ++++ Z-URL, Z-Filename, Z-Map2, Recompress, Safe
+     */
     private String Version="zsync: ";
     private String Filename="Filename: ";
     private String MTime="MTime: ";
@@ -27,24 +29,56 @@ SHA-1: 5944ec77b9b0f2d6b8212d142970117f5801430a
     private String SHA1="SHA-1: ";
     private SHA1 sha1;
 
-    public HeaderMaker(File file, String url, String blocksize){
+    private int blocksize=2048;
+    private String filename;
+    private long length;
+    private String url;
+
+    public HeaderMaker(File file, String filename, String url, int blocksize){
         Version+="0.0.0";
-        Filename+=file.getName();
+        if(filename==null){
+            Filename+=file.getName(); //default
+            filename=file.getName();
+        } else {
+            Filename+=filename;       //new file name
+            this.filename=filename;
+        }
         MTime+=now("EEE, dd MMMMM yyyy hh:mm:ss z");
         Length+=file.length();
+        length=file.length();
+
         if(url==null){
             URL+=file.toString(); //default
+            url=file.toString();
         } else {
             URL+=url;
+            this.url=url;
         }
-        if(blocksize==null){
+        if(blocksize==2048){
             Blocksize+="2048"; //default
-        } else {
+        } else if (isPowerOfTwo(blocksize)) {
             Blocksize+=blocksize;
+            this.blocksize=blocksize;
+        } else {
+            System.out.println("Blocksize must be a power of 2 (512, 1024, 2048, ...)");
+            System.exit(1);
         }
-        HashLengths+="2,2,4";
+        HashLengths+="1,4,16";  //seq,
         sha1 = new SHA1(file.toString());
         SHA1+=sha1.SHA1sum();
+    }
+    
+    private boolean isPowerOfTwo(int number){
+        boolean isPowerOfTwo = true;
+        while(number>1){
+            if(number%2 != 0){
+                isPowerOfTwo = false;
+                break;
+            } else {
+                number=number/2;
+            }
+        }
+        return isPowerOfTwo;
     }
 
 
@@ -54,40 +88,24 @@ SHA-1: 5944ec77b9b0f2d6b8212d142970117f5801430a
         return sdf.format(cal.getTime());
     }
 
-    public String getBlocksize() {
-        return Blocksize;
+    public int getBlocksize() {
+        return blocksize;
     }
 
     public String getFilename() {
-        return Filename;
+        return filename;
     }
 
-    public String getHashLengths() {
-        return HashLengths;
-    }
-
-    public String getLength() {
-        return Length;
-    }
-
-    public String getMTime() {
-        return MTime;
-    }
-
-    public String getSHA1() {
-        return SHA1;
+    public long getLength() {
+        return length;
     }
 
     public String getURL() {
-        return URL;
+        return url;
     }
-
-    public String getVersion() {
-        return Version;
-    }
-
-    public SHA1 getSha1() {
-        return sha1;
+    
+    public String getChecksum() {
+        return sha1.SHA1sum();
     }
 
     public String getHeader(){
@@ -99,7 +117,7 @@ SHA-1: 5944ec77b9b0f2d6b8212d142970117f5801430a
         all+=Length+"\n";
         all+=HashLengths+"\n";
         all+=URL+"\n";
-        all+=SHA1;
+        all+=SHA1+"\n\n";
         return all;
     }
 }

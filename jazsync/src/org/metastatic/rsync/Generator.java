@@ -234,7 +234,7 @@ public class Generator {
     */
    public ChecksumPair
    generateSum(byte[] buf, int off, int len, long fileOffset) {
-      ChecksumPair p = new ChecksumPair();
+      ChecksumPair p = new ChecksumPair();     
       config.weakSum.check(buf, off, len);
       config.strongSum.update(buf, off, len);
       if (config.checksumSeed != null) {

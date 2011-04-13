@@ -211,6 +211,7 @@ public class Checksum32 implements RollingChecksum, Cloneable, java.io.Serializa
    * @param len The length of the block to read.
    * @since 1.1
    */
+    @Override
   public void check(byte[] buf, int off, int len)
   {
     block = new byte[len];
