@@ -43,13 +43,13 @@ SHA-1: 5944ec77b9b0f2d6b8212d142970117f5801430a
             Filename+=filename;       //new file name
             this.filename=filename;
         }
-        MTime+=now("EEE, dd MMMMM yyyy hh:mm:ss z");
+        MTime+=now("dd MMMMM yyyy hh:mm:ss z");
         Length+=file.length();
         length=file.length();
 
         if(url==null){
-            URL+=file.toString(); //default
-            url=file.toString();
+            URL+=file.getName(); //default
+            url=file.getName();
         } else {
             URL+=url;
             this.url=url;

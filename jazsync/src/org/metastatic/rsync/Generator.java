@@ -160,27 +160,42 @@ public class Generator {
     *    generated from the file.
     * @throws java.io.IOException if <code>f</code> cannot be read from.
     */
-   public List generateSums(File f) throws IOException {
-      long len = f.length();
-      int count = (int) ((len+(config.blockLength+1)) / config.blockLength);
-      long offset = 0;
-      FileInputStream fin = new FileInputStream(f);
-      List sums = new ArrayList(count);
-      int n = (int) Math.min(len, config.blockLength);
-      byte[] buf = new byte[n];
+    public List generateSums(File f) throws IOException {
+        long len = f.length();
+        int count = (int) ((len + (config.blockLength + 1)) / config.blockLength);
+        long offset = 0;
+        FileInputStream fin = new FileInputStream(f);
+        List sums = new ArrayList(count);
+        int n = config.blockLength;
+        byte[] buf = new byte[n];
 
-      for (int i = 0; i < count; i++) {
-         int l = fin.read(buf, 0, n);
-         if (l == -1) break;
-         ChecksumPair pair = generateSum(buf, 0, Math.min(l, n), offset);
-         pair.seq = i;
+        for (int i = 0; i < count; i++) {
+            int l = fin.read(buf, 0, n);
+            if (l == -1) {
+                break;
+            }
+            if (n < config.blockLength) {
+                int index = n;
+                for (int j = 0; j < (config.blockLength - n); j++) {
+                    buf[index] = 0;
+                    index++;
+                }
+            }
+            /* spocita sumy pouze pokud je mnozstvi dat vetsi nez 0,
+             * a spocita je pro cely blok velikosti blocksize
+             * data, ktera nevyplnila celou blocksize jsou doplnena nulami
+             * do velikosti blocksize.
+             */
+            if (l > 0) {
+                ChecksumPair pair = generateSum(buf, 0, config.blockLength /* not in zsync -> Math.min(l, n)*/, offset);
+                pair.seq = i;
 
-         sums.add(pair);
-         len -= n;
-         offset += n;
-         n = (int) Math.min(len, config.blockLength);
-      }
-
+                sums.add(pair);
+                len -= n;
+                offset += n;
+                n = (int) Math.min(len, config.blockLength);
+            }
+        }
       fin.close();
       return sums;
    }

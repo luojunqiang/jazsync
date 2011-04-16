@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.security.MessageDigest;
@@ -19,13 +20,10 @@ import org.metastatic.rsync.*;
 import org.metastatic.rsync.Configuration;
 import org.metastatic.rsync.Generator;
 
-enum Param { u,U,b,o,f,z,Z,e,C,v }
-
 public class jazsyncmake {
     private static String url=null;
     private static int blocksize=2048;
     private static String filename=null;
-    private static Param param;
     private static File file;
     private static boolean noURL=false;
     static String[] argumenty={"-u","-U","-b","-o","-f","-z","-Z","-e","-C","-v"};
@@ -49,7 +47,6 @@ public class jazsyncmake {
 //            }
 //        }
 //        System.out.println(file.getName());
-        blocksize=128;
         file=new File("/home/Solitary/pro_debily_v_textaku.txt");
         if(noURL){
             System.out.println("No URL given, so I am including a relative "
@@ -57,9 +54,9 @@ public class jazsyncmake {
                     + " served and the .zsync in the same public directory. "
                     + "Use -u test to get this same result without this warning.");
         }
+        url="http://10.0.0.1/pro_debily_v_textaku.txt";
         HeaderMaker hm=new HeaderMaker(file,filename,url,blocksize);
         String header=hm.getHeader();
-        System.out.println(hm.getHeader());
         try {
 
             BufferedWriter out = new BufferedWriter(new FileWriter(file.getPath()+".zsync"));
@@ -71,39 +68,36 @@ public class jazsyncmake {
             System.out.println("Header write exception");
         }
         FileOutputStream fos=new FileOutputStream(file+".zsync", true);
-        
         Security.addProvider(new JarsyncProvider());
         Configuration c = new Configuration();
         c.strongSum = MessageDigest.getInstance("MD4");
-        c.weakSum = new Checksum32();
-        
-        c.blockLength = 128;
+        c.weakSum = new Rsum();
+        c.blockLength = blocksize;
         c.strongSumLength = 16;
         Generator gen = new Generator(c);
         List list = new ArrayList((int)(file.length()/blocksize)+1);
         list = gen.generateSums(file);
         Iterator it = list.iterator();
         ChecksumPair p;
+        byte[] b=new byte[4];
         while(it.hasNext()){
             p=(ChecksumPair)it.next();
-            fos.write(intToByte(p.getWeak()));
+            fos.write(intToBytes(p.getWeak()));
             fos.write(p.getStrong());
-            System.out.println(p.toString());
         }
-
     }
 
-    public static byte itb(int n) {
-        if (n < 128) return (byte)n;
-        return (byte)((byte) n - 256);
-     }
-
-    public static byte[] intToByte(int number){
-        byte[] arr=new byte[4];
-        arr[0] =(byte)( number >> 24);
-        arr[1] =(byte)((number << 8) >> 24);
-        arr[2] =(byte)((number << 16) >> 24);
-        arr[3] =(byte)((number << 24) >> 24);
-        return arr;
+    /**
+     * Converting integer weakSum into byte array that zsync can read
+     * (hton byte order)
+     * @param number weakSum in integer form
+     * @return converted byte array readable by zsync (hton byte order)
+     */
+    public static byte[] intToBytes(int number){
+        return new byte[] {
+            (byte)((number << 16) >> 24),
+            (byte)((number << 24) >> 24),
+            (byte)( number >> 24),
+            (byte)((number << 8) >> 24)};
     }
 }

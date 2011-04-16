@@ -146,6 +146,26 @@ public class ChecksumPair implements java.io.Serializable {
    }
 
    /**
+    * Get the weak checksum in hexadecimal format.
+    *
+    * @return The weak checksum.
+    */
+
+   public String getWeakHex(){
+       return Integer.toHexString(weak);
+   }
+   
+   /**
+    * Get the strong checksum in hexadecimal format.
+    *
+    * @return The strong checksum.
+    */
+
+   public String getStrongHex(){
+       return Util.toHexString(strong);
+   }
+
+   /**
     * Get the strong checksum.
     *
     * @return The strong checksum.
