@@ -16,7 +16,7 @@ URL: http://i.iinfo.cz/files/root/240/tinycore.iso
 SHA-1: 5944ec77b9b0f2d6b8212d142970117f5801430a
 */
 
-    /**
+    /** Nutne dodelat hlavicky tykajici se komprimovanych streamu
      * ++++ Z-URL, Z-Filename, Z-Map2, Recompress, Safe
      */
     private String Version="zsync: ";
@@ -26,44 +26,54 @@ SHA-1: 5944ec77b9b0f2d6b8212d142970117f5801430a
     private String Length="Length: ";
     private String HashLengths="Hash-Lengths: ";
     private String URL="URL: ";
+    private String ZURL="Z-URL: "; //nahradi URL v pripade gz
     private String SHA1="SHA-1: ";
+    private String ZMAP2="Z-Map2: ";
     private SHA1 sha1;
 
     private int blocksize=2048;
     private String filename;
     private long length;
     private String url;
+    private int seq_num=1;
+    private int rsum_bytes=4;
+    private int checksum_bytes=16;
 
-    public HeaderMaker(File file, String filename, String url, int blocksize){
-        Version+="0.0.0";
+    public HeaderMaker(File file, String filename, String url, int blocksize, int checksum_bytes){
+        Version+="jazsync";
+
         if(filename==null){
-            Filename+=file.getName(); //default
-            filename=file.getName();
+            Filename+=file.getName();   //default
+            this.filename=file.getName();
         } else {
-            Filename+=filename;       //new file name
+            Filename+=filename;         //new file name
             this.filename=filename;
         }
-        MTime+=now("dd MMMMM yyyy hh:mm:ss z");
+
+        MTime+=now("dd MMMMM yyyy HH:mm:ss z");
         Length+=file.length();
         length=file.length();
 
         if(url==null){
-            URL+=file.getName(); //default
-            url=file.getName();
+            URL+=file.getName();        //default
+            this.url=file.getName();
         } else {
-            URL+=url;
+            URL+=url;                   //new url
             this.url=url;
         }
+
         if(blocksize==2048){
-            Blocksize+="2048"; //default
+            Blocksize+="2048";          //default
         } else if (isPowerOfTwo(blocksize)) {
-            Blocksize+=blocksize;
+            Blocksize+=blocksize;       //new blocksize
             this.blocksize=blocksize;
         } else {
             System.out.println("Blocksize must be a power of 2 (512, 1024, 2048, ...)");
             System.exit(1);
         }
-        HashLengths+="1,4,16";  //seq,
+        
+        this.checksum_bytes=checksum_bytes;
+        HashLengths+=(this.seq_num+","+this.rsum_bytes+","+this.checksum_bytes);
         sha1 = new SHA1(file.toString());
         SHA1+=sha1.SHA1sum();
     }
@@ -108,16 +118,28 @@ SHA-1: 5944ec77b9b0f2d6b8212d142970117f5801430a
         return sha1.SHA1sum();
     }
 
-    public String getHeader(){
+    public int getSeqNum(){
+        return seq_num;
+    }
+
+    public int getRsumBytes(){
+        return rsum_bytes;
+    }
+
+    public int getStrongSumLength(){
+        return checksum_bytes;
+    }
+
+    public String getFullHeader(){
         String all="";
-        all+=Version+"\n";
-        all+=Filename+"\n";
-        all+=MTime+"\n";
-        all+=Blocksize+"\n";
-        all+=Length+"\n";
-        all+=HashLengths+"\n";
-        all+=URL+"\n";
-        all+=SHA1+"\n\n";
+        all +=Version+"\n"
+            + Filename+"\n"
+            + MTime+"\n"
+            + Blocksize+"\n"
+            + Length+"\n"
+            + HashLengths+"\n"
+            + URL+"\n"
+            + SHA1+"\n\n";
         return all;
     }
 }
