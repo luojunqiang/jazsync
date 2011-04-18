@@ -32,13 +32,13 @@ public class MetaFileMaker {
 
     /** The long options. */
     private static final LongOpt[] LONGOPTS = new LongOpt[] {
-      new LongOpt("blocksize",  LongOpt.REQUIRED_ARGUMENT, null, 'b'),
-      new LongOpt("url",       LongOpt.REQUIRED_ARGUMENT, null, 'u'),
-      new LongOpt("help",        LongOpt.NO_ARGUMENT, null, 'h'),
-      new LongOpt("filename",  LongOpt.REQUIRED_ARGUMENT, null, 'f'),
-      new LongOpt("version",     LongOpt.NO_ARGUMENT, null, 'V'),
-      new LongOpt("outputfile",     LongOpt.REQUIRED_ARGUMENT, null, 'o'),
-      new LongOpt("verbose",     LongOpt.NO_ARGUMENT, null, 'v')   
+        new LongOpt("blocksize",  LongOpt.REQUIRED_ARGUMENT, null, 'b'),
+        new LongOpt("url",        LongOpt.REQUIRED_ARGUMENT, null, 'u'),
+        new LongOpt("help",       LongOpt.NO_ARGUMENT, null, 'h'),
+        new LongOpt("filename",   LongOpt.REQUIRED_ARGUMENT, null, 'f'),
+        new LongOpt("version",    LongOpt.NO_ARGUMENT, null, 'V'),
+        new LongOpt("outputfile", LongOpt.REQUIRED_ARGUMENT, null, 'o'),
+        new LongOpt("verbose",    LongOpt.NO_ARGUMENT, null, 'v')
     };
 
     private static String url;
@@ -55,7 +55,9 @@ public class MetaFileMaker {
     public MetaFileMaker(String[] args) {
         Security.addProvider(new JarsyncProvider());
         blocksize=BLOCK_SIZE;
-        strongSumLength=STRONG_SUM_LENGTH; //nutne optimalizace ke zmene delky
+        
+        //nutne optimalizace ke zmene delky kontrolnich souctu
+        strongSumLength=STRONG_SUM_LENGTH; 
 
         Getopt g = new Getopt("jazsyncmake", args, OPTSTRING, LONGOPTS);
         int c;
@@ -111,7 +113,7 @@ public class MetaFileMaker {
                 outputfile=file.getName()+".zsync";
             }
         } else {
-            System.out.println("");
+            System.out.println("No file specified in arguments");
             System.exit(1);
         }
 
@@ -119,9 +121,14 @@ public class MetaFileMaker {
             System.out.println("No URL given, so I am including a relative "
                     + "URL in the .zsync file - you must keep the file being"
                     + " served and the .zsync in the same public directory. "
-                    + "Use -u test to get this same result without this warning.");
+                    + "Use -u "+file.getName()+" to get this same result without this warning.");
         }
-        // zde probehne analyza velikosti souboru a nasledny vypocet hash-lengths
+
+        /**
+         * zde by mela probehnout analyza velikosti souboru
+         * a nasledny vypocet hash-lengths
+         */
+
         //creating header and saving it into the created metafile
         HeaderMaker hm=new HeaderMaker(file,filename,url,blocksize,strongSumLength);
         header=hm.getFullHeader();
@@ -154,7 +161,7 @@ public class MetaFileMaker {
                 fos.write(p.getStrong());
             }
         } catch (IOException ioe){
-            System.out.println("IO problem");
+            System.out.println("IO problem in metafile checksums writing");
         } catch (NoSuchAlgorithmException nae){
             System.out.println("MD4 is not working");
         }
@@ -174,6 +181,10 @@ public class MetaFileMaker {
             (byte)((number << 8) >> 24)};
     }
 
+    /**
+     * Prints a help message
+     * @param out Output stream (e.g. System.out)
+     */
     private void help(PrintStream out) {
         out.println("Usage: jazsyncmake [OPTIONS] filename");
         out.println("");
@@ -186,7 +197,11 @@ public class MetaFileMaker {
         out.println("  -V, --version                  Show program version");
         out.println("* -v, --verbose                  Trace internal processing");
     }
-    
+
+    /**
+     * Prints a version message
+     * @param out Output stream (e.g. System.out)
+     */
     private void version(PrintStream out){
         out.println("Version: Jazsync v0.0.1 (jazsyncmake)");
         out.println("by Tomáš Hlavnička <hlavntom@fel.cvut.cz>");

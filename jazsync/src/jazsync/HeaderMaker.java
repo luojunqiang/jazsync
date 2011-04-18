@@ -3,6 +3,7 @@ package jazsync;
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Locale;
 
 public class HeaderMaker {
 /*
@@ -50,7 +51,7 @@ SHA-1: 5944ec77b9b0f2d6b8212d142970117f5801430a
             this.filename=filename;
         }
 
-        MTime+=now("dd MMMMM yyyy HH:mm:ss z");
+        MTime+=now("EEE, dd MMMMM yyyy HH:mm:ss Z");
         Length+=file.length();
         length=file.length();
 
@@ -94,40 +95,8 @@ SHA-1: 5944ec77b9b0f2d6b8212d142970117f5801430a
 
     private String now(String dateFormat) {
         Calendar cal = Calendar.getInstance();
-        SimpleDateFormat sdf = new SimpleDateFormat(dateFormat);
+        SimpleDateFormat sdf = new SimpleDateFormat(dateFormat,Locale.US);
         return sdf.format(cal.getTime());
-    }
-
-    public int getBlocksize() {
-        return blocksize;
-    }
-
-    public String getFilename() {
-        return filename;
-    }
-
-    public long getLength() {
-        return length;
-    }
-
-    public String getURL() {
-        return url;
-    }
-    
-    public String getChecksum() {
-        return sha1.SHA1sum();
-    }
-
-    public int getSeqNum(){
-        return seq_num;
-    }
-
-    public int getRsumBytes(){
-        return rsum_bytes;
-    }
-
-    public int getStrongSumLength(){
-        return checksum_bytes;
     }
 
     public String getFullHeader(){
