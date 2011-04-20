@@ -174,6 +174,10 @@ public class Generator {
             if (l == -1) {
                 break;
             }
+            /*
+             * V pripade, ze mnozstvi dat nevyplni celou blocksize, doplnime
+             * data nulami az do velikosti blocksize
+             */
             if (n < config.blockLength) {
                 int index = n;
                 for (int j = 0; j < (config.blockLength - n); j++) {

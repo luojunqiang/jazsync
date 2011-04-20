@@ -4,9 +4,13 @@ import gnu.getopt.Getopt;
 import gnu.getopt.LongOpt;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintStream;
+import org.metastatic.rsync.ChecksumPair;
 
 public class MetaFileReader {
 
@@ -28,6 +32,8 @@ public class MetaFileReader {
     private String url;
     private File metafile;
     private String filename;
+    private int fileOffset = 0;
+    private ChainingHash hashtable;
 
     /** Variables for header information from .zsync metafile */
     //------------------------------
@@ -43,7 +49,8 @@ public class MetaFileReader {
     private String mf_sha1;
     //------------------------------
 
-    public MetaFileReader(String[] args) {
+
+    public MetaFileReader(String[] args) throws FileNotFoundException, IOException {
         Getopt g = new Getopt("jazsync", args, OPTSTRING, LONGOPTS);
         int c;
         while ((c = g.getopt()) != -1) {
@@ -87,10 +94,19 @@ public class MetaFileReader {
         if (args.length > g.getOptind()) {
             filename = args[g.getOptind()];
             metafile=new File(filename);
-            //nezjistujeme jestli je to URL,
-            //ale zkusime rovnou file, kdyz neni, tak pokus o otevreni spojeni
+
+            /*
+             * nezjistujeme jestli je to URL ci file, ale rovnou zkusime zdali 
+             * jde off file, kdyz ne, tak se teprve pokusime otevrit spojeni
+             */
             if(metafile.isFile()){
                 readMetaFile();
+                /* check (return bool) existency of file (check his SHA1)
+                 before reading checksums
+                 if false - start downloading without reading checksums
+                 * check();
+                 */
+                readChecksums();
                 //precteme metafile z disku
             } else {
                 //zkusime to jako URL
@@ -102,6 +118,10 @@ public class MetaFileReader {
         }
     }
 
+    /**
+     * Method gets informations from metafile header and store values
+     * in variables mf_variable
+     */
     private void readMetaFile(){
         try {
             BufferedReader in = new BufferedReader(new FileReader(metafile));
@@ -110,9 +130,8 @@ public class MetaFileReader {
             int colonIndex;
             while ((s = in.readLine()) != null) {
                 if(s.equals("")){
-                    //timto radkem zkoncil header
-                    
-                    break; // namisto break spustime getChecksums a nacteme je do hash table
+                    //timto prazdnym radkem zkoncil header
+                    break;
                 }
                 colonIndex = s.indexOf(":");
                 subs = s.substring(0, colonIndex);
@@ -125,7 +144,7 @@ public class MetaFileReader {
                 } else if (subs.equalsIgnoreCase("Blocksize")) {
                     mf_blocksize=Integer.parseInt(s.substring(colonIndex+2));
                 } else if (subs.equalsIgnoreCase("Length")) {
-                    mf_length=Integer.parseInt(s.substring(colonIndex+2));
+                    mf_length=Long.parseLong(s.substring(colonIndex+2));
                 } else if (subs.equalsIgnoreCase("Hash-Lengths")) {
                     int comma=s.indexOf(",");
                     mf_seq_num=Integer.parseInt(s.substring((colonIndex+2), comma));
@@ -147,7 +166,102 @@ public class MetaFileReader {
             System.out.println("IO problem in metafile header reading");
         }
     }
-    
+
+    /**
+     *
+     * @throws FileNotFoundException
+     * @throws IOException
+     */
+    private void readChecksums() throws FileNotFoundException, IOException {
+        InputStream is = new FileInputStream(metafile);
+
+        long length=metafile.length();
+        if (metafile.length() > Integer.MAX_VALUE) {
+            System.out.println("Metafile is too large");
+            System.exit(1);
+        }
+        byte[] bytes = new byte[(int)length];
+
+        int offset = 0;
+        int n = 0;
+        while (offset<bytes.length && (n=is.read(bytes, offset, bytes.length-offset)) >= 0) {
+            offset += n;
+        }
+
+        // Presvedcime se, ze jsme precetli cely soubor
+        if (offset < bytes.length) {
+            throw new IOException("Could not completely read file "+metafile.getName());
+        }
+
+        // Zavre stream a urci offset, kde konci hlavicka a zacinaji kontrolni soucty
+        is.close();
+        for(int i=2;i<bytes.length;i++){
+            if(bytes[i-2]==10 && bytes[i-1]==10){
+                fileOffset=i;
+                break;
+            }
+        }
+        fillHashTable(bytes);
+    }
+
+    /**
+     * Fills a chaining hash table with ChecksumPairs
+     * @param checksums Byte array with bytes of checksums from metafile
+     */
+    private void fillHashTable(byte[] checksums){
+        int i=16;
+        System.out.println((mf_length/mf_blocksize)+1);
+        //spocteme velikost hashtable podle poctu bloku dat
+        while((2 << (i-1)) > ((mf_length/mf_blocksize)+1) && i > 4) {
+            i--;
+        }
+        //vytvorime hashtable o velikosti 2^i (max. 2^16, min. 2^4)
+        hashtable = new ChainingHash(2 << (i-1));
+        ChecksumPair p;
+        Link item;
+        int offset=0;
+        int weakSum=0;
+        int seq=0;
+        int off=fileOffset;
+        byte[] weak=new byte[mf_rsum_bytes];
+        byte[] strongSum=new byte[mf_checksum_bytes];
+
+        while(seq < (mf_length/mf_blocksize)+1){
+
+            for(int w=0;w<weak.length;w++){
+                weak[w]=checksums[off];
+                off++;
+            }
+            
+            for(int s=0;s<strongSum.length;s++){
+                strongSum[s]=checksums[off];
+                off++;
+            }
+
+            //potreba predelat pro variabilni delku weakSum
+            //*********************************************
+            if(weak.length<4){
+                System.out.println("Hash-length optimalizations are not "
+                        + "implemented yet, lenght of weak "
+                        + "checksums needs to be 4 bytes.");
+                System.exit(1);
+            }
+            
+            weakSum=0;
+            weakSum+=(weak[2] & 0x000000FF) << 24;
+            weakSum+=(weak[3] & 0x000000FF) << 16;
+            weakSum+=(weak[0] & 0x000000FF) << 8;
+            weakSum+=(weak[1] & 0x000000FF);
+            //*********************************************
+            
+            p = new ChecksumPair(weakSum,strongSum,offset,mf_blocksize,seq);
+            offset+=mf_blocksize;
+            seq++;
+            item = new Link(p);
+            hashtable.insert(item);
+
+        }
+    }  
 
     /**
      * Prints a help message

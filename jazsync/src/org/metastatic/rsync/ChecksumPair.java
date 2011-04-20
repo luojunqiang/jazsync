@@ -206,8 +206,28 @@ public class ChecksumPair implements java.io.Serializable {
  // Public instance methods overriding java.lang.Object.
    // -------------------------------------------------------------------------
 
+   /**
+    * Hashcode is produced from summing 4bytes of weakSum into 2bytes
+    * @return
+    */
+    @Override
    public int hashCode() {
-      return weak;
+        byte[] weakByte=new byte[] {
+            (byte)( weak >> 24),
+            (byte)((weak << 8) >> 24),
+            (byte)((weak << 16) >> 24),
+            (byte)((weak << 24) >> 24)
+        };
+        byte[] weakAdd=new byte[] {
+            (byte)(weakByte[0]+weakByte[1]),
+            (byte)(weakByte[2]+weakByte[3])
+        };
+        int hashCode = 0;
+        for (int i = 0; i < 2; i++) {
+            int shift = (1-i)*8;
+            hashCode += (weakAdd[i] & 0x00FF) << shift;
+        }
+        return hashCode;
    }
 
    /**
@@ -217,6 +237,7 @@ public class ChecksumPair implements java.io.Serializable {
     * @param obj The Object to test.
     * @return True if both checksum pairs are equal.
     */
+    @Override
    public boolean equals(Object obj) {
       return weak == ((ChecksumPair) obj).weak &&
          Arrays.equals(strong, ((ChecksumPair) obj).strong);
@@ -228,6 +249,7 @@ public class ChecksumPair implements java.io.Serializable {
     * @return The String representation of this pair.
     * @since 1.2
     */
+    @Override
    public String toString() {
       StringBuffer buf = new StringBuffer();
       String s;
@@ -237,6 +259,6 @@ public class ChecksumPair implements java.io.Serializable {
       }
       String weak = buf.toString() + s;
       return "len=" + length + " offset=" + offset + " weak=" + weak
-         + " strong=" + Util.toHexString(strong);
+         + " strong=" + Util.toHexString(strong) + " seq="+seq;
    }
 }

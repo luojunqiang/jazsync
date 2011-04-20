@@ -7,11 +7,10 @@ public class Rsum implements RollingChecksum, Cloneable, java.io.Serializable {
     private short b;
     private short k,l;
     private byte[] block;
-    private int char_offset=0;
 
     public Rsum(){
-        a=b=0;
-        k=0;
+        a = b = 0;
+        k = 0;
     }
 
     @Override
@@ -26,9 +25,9 @@ public class Rsum implements RollingChecksum, Cloneable, java.io.Serializable {
 
     @Override
     public void roll(byte bt) {
-        a -= block[k] + char_offset;
-        b -= l * (block[k] + char_offset);
-        a += bt + char_offset;
+        a -= block[k];
+        b -= l * (block[k]);
+        a += bt;
         b += a;
         block[k] = bt;
         k++;
@@ -37,8 +36,8 @@ public class Rsum implements RollingChecksum, Cloneable, java.io.Serializable {
 
     @Override
     public void trim() {
-        a -= block[k % block.length] + char_offset;
-        b -= l * (block[k % block.length] + char_offset);
+        a -= block[k % block.length];
+        b -= l * (block[k % block.length]);
         k++;
         l--;
     }
@@ -60,19 +59,16 @@ public class Rsum implements RollingChecksum, Cloneable, java.io.Serializable {
     }
 
     @Override
-  public Object clone() {
-    try
-      {
-        return super.clone();
-      }
-    catch (CloneNotSupportedException cnse)
-      {
-        throw new Error();
-      }
-  }
+    public Object clone() {
+        try {
+            return super.clone();
+        } catch (CloneNotSupportedException cnse) {
+            throw new Error();
+        }
+    }
 
     @Override
-  public boolean equals(Object o) {
-    return ((Rsum)o).a == a && ((Rsum)o).b == b;
-  }
+    public boolean equals(Object o) {
+        return ((Rsum) o).a == a && ((Rsum) o).b == b;
+    }
 }

@@ -117,13 +117,6 @@ public class MetaFileMaker {
             System.exit(1);
         }
 
-        if(noURL){
-            System.out.println("No URL given, so I am including a relative "
-                    + "URL in the .zsync file - you must keep the file being"
-                    + " served and the .zsync in the same public directory. "
-                    + "Use -u "+file.getName()+" to get this same result without this warning.");
-        }
-
         /**
          * zde by mela probehnout analyza velikosti souboru
          * a nasledny vypocet hash-lengths
@@ -165,6 +158,13 @@ public class MetaFileMaker {
         } catch (NoSuchAlgorithmException nae){
             System.out.println("MD4 is not working");
         }
+
+        if(noURL){
+            System.out.println("No URL given, so I am including a relative "
+                    + "URL in the .zsync file - you must keep the file being"
+                    + " served and the .zsync in the same public directory. "
+                    + "Use -u "+file.getName()+" to get this same result without this warning.");
+        }
     }
 
     /**
@@ -175,10 +175,10 @@ public class MetaFileMaker {
      */
     private byte[] intToBytes(int number){
         return new byte[] {
-            (byte)((number << 16) >> 24),
-            (byte)((number << 24) >> 24),
-            (byte)( number >> 24),
-            (byte)((number << 8) >> 24)};
+            (byte)((number << 16) >> 24), //[2]
+            (byte)((number << 24) >> 24), //[3]
+            (byte)( number >> 24),        //[0]
+            (byte)((number << 8) >> 24)}; //[1]
     }
 
     /**
