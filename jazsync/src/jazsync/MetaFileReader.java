@@ -259,7 +259,6 @@ public class MetaFileReader {
             seq++;
             item = new Link(p);
             hashtable.insert(item);
-
         }
     }  
 
