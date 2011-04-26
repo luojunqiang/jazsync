@@ -39,19 +39,15 @@ class SortedList {
 
     public void insert(Link link) {
         ChecksumPair pKey = link.getKey();
-        Link previous = null; // start at first
+        Link previous = null;
         Link current = first;
-        // until end of list,
-        //or current bigger than pKey,
         while (current != null && pKey.getOffset() > current.getKey().getOffset()) {
             previous = current;
-            current = current.next; // go to next item
+            current = current.next;
         }
-        if (previous == null) // if beginning of list,
-        {
+        if (previous == null) {
             first = link;
-        } else // not at beginning,
-        {
+        } else {
             previous.next = link;
         }
         link.next = current;
@@ -65,39 +61,33 @@ class SortedList {
             previous = current;
             current = current.next;
         }
-        // disconnect link
-        if (previous == null) //   if beginning of list delete first link
-        {
+        if (previous == null) {
             first = first.next;
-        } else //   not at beginning
-        {
-            previous.next = current.next; //delete current link
+        } else {
+            previous.next = current.next;
         }
     }
 
     public Link find(ChecksumPair pKey) {
         Link current = first;
-        while (current != null && current.getKey().getOffset() <= pKey.getOffset()) { // or pKey too small,
-            if (current.getKey() == pKey) // found, return link
+        while (current != null && current.getKey().getOffset() <= pKey.getOffset()) {
+            if (current.getKey() == pKey) 
             {
                 return current;
             }
-            current = current.next; // go to next item
+            current = current.next;
         }
-        return null; // cannot find it
+        return null;
     }
 
     public void displayList() {
         System.out.print("List: ");
         Link current = first;
-        int i=0;
         while (current != null) {
-            //current.displayLink();
+            current.displayLink();
             current = current.next;
-            i++;
         }
-        System.out.println(i);
-        //System.out.println("");
+        System.out.println();
     }
 }
 
@@ -135,13 +125,13 @@ public class ChainingHash {
     }
 
     public void delete(ChecksumPair pKey) {
-        int hashVal = hashFunc(pKey); // hash the pKey
+        int hashVal = hashFunc(pKey); // zahashujeme klic
         hashArray[hashVal].delete(pKey);
     }
 
     public Link find(ChecksumPair pKey) {
-        int hashVal = hashFunc(pKey); // hash the pKey
-        Link theLink = hashArray[hashVal].find(pKey); // get link
+        int hashVal = hashFunc(pKey);
+        Link theLink = hashArray[hashVal].find(pKey); 
         return theLink;
     }
 }

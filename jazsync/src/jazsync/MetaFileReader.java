@@ -10,6 +10,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.net.Socket;
+import javax.security.auth.login.Configuration;
 import org.metastatic.rsync.ChecksumPair;
 
 public class MetaFileReader {
@@ -31,8 +33,8 @@ public class MetaFileReader {
 
     private String url;
     private File metafile;
+    private byte[] metafileBytes;
     private String filename;
-    private int fileOffset = 0;
     private ChainingHash hashtable;
 
     /** Variables for header information from .zsync metafile */
@@ -53,6 +55,7 @@ public class MetaFileReader {
     public MetaFileReader(String[] args) throws FileNotFoundException, IOException {
         Getopt g = new Getopt("jazsync", args, OPTSTRING, LONGOPTS);
         int c;
+        Socket s;
         while ((c = g.getopt()) != -1) {
             switch (c) {
                 case 'A':
@@ -96,26 +99,90 @@ public class MetaFileReader {
             metafile=new File(filename);
 
             /*
-             * nezjistujeme jestli je to URL ci file, ale rovnou zkusime zdali 
-             * jde off file, kdyz ne, tak se teprve pokusime otevrit spojeni
+             * nezjistujeme jestli je to URL ci file, ale zkusime zdali 
+             * jde o file, kdyz ne, tak se rovnou pokusime otevrit spojeni
              */
             if(metafile.isFile()){
                 readMetaFile();
-                /* check (return bool) existency of file (check his SHA1)
-                 before reading checksums
-                 if false - start downloading without reading checksums
-                 * check();
-                 */
+                //checkOutputFile();
                 readChecksums();
-                //precteme metafile z disku
+            } else if (filename.startsWith("http://")) {
+                HttpConnection http = new HttpConnection(filename);
+                http.openConnection();
+                System.out.println(http.getResponseHeader());
+                metafileBytes = http.getMetafile();
             } else {
-                //zkusime to jako URL
+                System.out.println(metafile+": No such file or directory");
             }
+            
         } else {
             System.out.println("No metafile specified in arguments");
             System.out.println("Try 'jazsync --help' for more info.");
             System.exit(1);
         }
+    }
+
+    private void checkOutputFile(){
+        File file = new File(mf_filename);
+        if(file.isFile()){
+            SHA1 sha1=new SHA1(file.getPath());
+            if(sha1.SHA1sum().equals(mf_sha1)){
+                System.out.println("Read "+mf_filename+". Target 100.0% complete.\n"
+                        + "verifying download...checksum matches OK\n"
+                        + "used "+mf_length+" local, fetched 0");
+                System.exit(0);
+            } else {
+                //dotahame potrebne bloky
+            }
+        } else {
+            //stahneme cely soubor
+        }
+    }
+
+
+    private boolean parseHeader(String s){
+        String subs;
+        int colonIndex;
+        if(s.equals("")){
+            //timto prazdnym radkem zkoncil header, muzeme prestat cist
+            return true;
+        }
+        colonIndex = s.indexOf(":");
+        subs = s.substring(0, colonIndex);
+        if(subs.equalsIgnoreCase("zsync")){
+            mf_version=s.substring(colonIndex+2);
+        } else if (subs.equalsIgnoreCase("Filename")) {
+            mf_filename=s.substring(colonIndex+2);
+        } else if (subs.equalsIgnoreCase("MTime")) {
+            mf_mtime=s.substring(colonIndex+2);
+        } else if (subs.equalsIgnoreCase("Blocksize")) {
+            mf_blocksize=Integer.parseInt(s.substring(colonIndex+2));
+        } else if (subs.equalsIgnoreCase("Length")) {
+            mf_length=Long.parseLong(s.substring(colonIndex+2));
+        } else if (subs.equalsIgnoreCase("Hash-Lengths")) {
+            int comma=s.indexOf(",");
+            mf_seq_num=Integer.parseInt(s.substring((colonIndex+2), comma));
+            int nextComma=s.indexOf(",",comma+1);
+            mf_rsum_bytes=Integer.parseInt(s.substring(comma+1, nextComma));
+            mf_checksum_bytes=Integer.parseInt(s.substring(nextComma+1));
+            //zkontrolujeme validni hash-lengths
+            if((mf_seq_num < 1 || mf_seq_num > 2) ||
+               (mf_rsum_bytes < 1 || mf_rsum_bytes > 4) ||
+               (mf_checksum_bytes < 3 || mf_checksum_bytes > 16)){
+                System.out.println("Nonsensical hash lengths line "+s.substring(colonIndex+2));
+                System.exit(1);
+            }
+
+        } else if (subs.equalsIgnoreCase("URL")) {
+            mf_url=s.substring(colonIndex+2);
+        } else if (subs.equalsIgnoreCase("Z-URL")) {
+            //not implemented yet
+        } else if (subs.equalsIgnoreCase("SHA-1")) {
+            mf_sha1=s.substring(colonIndex+2);
+        } else if (subs.equalsIgnoreCase("Z-Map2")) {
+            //not implemented yet
+        }
+        return false;
     }
 
     /**
@@ -126,39 +193,9 @@ public class MetaFileReader {
         try {
             BufferedReader in = new BufferedReader(new FileReader(metafile));
             String s;
-            String subs;
-            int colonIndex;
             while ((s = in.readLine()) != null) {
-                if(s.equals("")){
-                    //timto prazdnym radkem zkoncil header
+                if(parseHeader(s)){
                     break;
-                }
-                colonIndex = s.indexOf(":");
-                subs = s.substring(0, colonIndex);
-                if(subs.equalsIgnoreCase("zsync")){
-                    mf_version=s.substring(colonIndex+2);
-                } else if (subs.equalsIgnoreCase("Filename")) {
-                    mf_filename=s.substring(colonIndex+2);
-                } else if (subs.equalsIgnoreCase("MTime")) {
-                    mf_mtime=s.substring(colonIndex+2);
-                } else if (subs.equalsIgnoreCase("Blocksize")) {
-                    mf_blocksize=Integer.parseInt(s.substring(colonIndex+2));
-                } else if (subs.equalsIgnoreCase("Length")) {
-                    mf_length=Long.parseLong(s.substring(colonIndex+2));
-                } else if (subs.equalsIgnoreCase("Hash-Lengths")) {
-                    int comma=s.indexOf(",");
-                    mf_seq_num=Integer.parseInt(s.substring((colonIndex+2), comma));
-                    int nextComma=s.indexOf(",",comma+1);
-                    mf_rsum_bytes=Integer.parseInt(s.substring(comma+1, nextComma));
-                    mf_checksum_bytes=Integer.parseInt(s.substring(nextComma+1));
-                } else if (subs.equalsIgnoreCase("URL")) {
-                    mf_url=s.substring(colonIndex+2);
-                } else if (subs.equalsIgnoreCase("Z-URL")) {
-                    //not implemented yet
-                } else if (subs.equalsIgnoreCase("SHA-1")) {
-                    mf_sha1=s.substring(colonIndex+2);
-                } else if (subs.equalsIgnoreCase("Z-Map2")) {
-                    //not implemented yet
                 }
             }
             in.close();
@@ -181,7 +218,6 @@ public class MetaFileReader {
             System.exit(1);
         }
         byte[] bytes = new byte[(int)length];
-
         int offset = 0;
         int n = 0;
         while (offset<bytes.length && (n=is.read(bytes, offset, bytes.length-offset)) >= 0) {
@@ -195,22 +231,24 @@ public class MetaFileReader {
 
         // Zavre stream a urci offset, kde konci hlavicka a zacinaji kontrolni soucty
         is.close();
+        int fileOffset = 0;
         for(int i=2;i<bytes.length;i++){
             if(bytes[i-2]==10 && bytes[i-1]==10){
                 fileOffset=i;
                 break;
             }
         }
-        fillHashTable(bytes);
+        fillHashTable(bytes, fileOffset);
     }
 
     /**
      * Fills a chaining hash table with ChecksumPairs
-     * @param checksums Byte array with bytes of checksums from metafile
+     * @param checksums Byte array with bytes of whole metafile
+     * @param fileOffset Offset in byte array indicating where header ends and
+     * checksums starts
      */
-    private void fillHashTable(byte[] checksums){
+    private void fillHashTable(byte[] checksums, int fileOffset){
         int i=16;
-        System.out.println((mf_length/mf_blocksize)+1);
         //spocteme velikost hashtable podle poctu bloku dat
         while((2 << (i-1)) > ((mf_length/mf_blocksize)+1) && i > 4) {
             i--;
@@ -242,7 +280,7 @@ public class MetaFileReader {
             //*********************************************
             if(weak.length<4){
                 System.out.println("Hash-length optimalizations are not "
-                        + "implemented yet, lenght of weak "
+                        + "implemented yet, length of weak "
                         + "checksums needs to be 4 bytes.");
                 System.exit(1);
             }
@@ -263,7 +301,7 @@ public class MetaFileReader {
     }  
 
     /**
-     * Prints a help message
+     * Prints out a help message
      * @param out Output stream (e.g. System.out)
      */
     private void help(PrintStream out) {
@@ -282,7 +320,7 @@ public class MetaFileReader {
     }
 
     /**
-     * Prints a version message
+     * Prints out a version message
      * @param out Output stream (e.g. System.out)
      */
     private void version(PrintStream out){

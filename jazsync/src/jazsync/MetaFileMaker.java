@@ -118,7 +118,7 @@ public class MetaFileMaker {
         }
 
         /**
-         * zde by mela probehnout analyza velikosti souboru
+         * zde by mela probehnout analyza velikosti souboru v pomeru k blocksize
          * a nasledny vypocet hash-lengths
          */
 
@@ -144,12 +144,9 @@ public class MetaFileMaker {
             config.blockLength = blocksize;
             config.strongSumLength = strongSumLength;
             Generator gen = new Generator(config);
-            List list = new ArrayList((int)(file.length()/blocksize)+1);
+            List<ChecksumPair> list = new ArrayList<ChecksumPair>((int)(file.length()/blocksize)+1);
             list = gen.generateSums(file);
-            Iterator it = list.iterator();
-            ChecksumPair p;
-            while(it.hasNext()){
-                p=(ChecksumPair)it.next();
+            for(ChecksumPair p : list){
                 fos.write(intToBytes(p.getWeak()));
                 fos.write(p.getStrong());
             }
@@ -182,7 +179,7 @@ public class MetaFileMaker {
     }
 
     /**
-     * Prints a help message
+     * Prints out a help message
      * @param out Output stream (e.g. System.out)
      */
     private void help(PrintStream out) {
@@ -199,7 +196,7 @@ public class MetaFileMaker {
     }
 
     /**
-     * Prints a version message
+     * Prints out a version message
      * @param out Output stream (e.g. System.out)
      */
     private void version(PrintStream out){
