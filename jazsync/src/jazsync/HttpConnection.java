@@ -5,6 +5,7 @@ import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.Reader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -106,14 +107,12 @@ public class HttpConnection {
 
     public byte[] getMetafile(){
         byte[] bytes = new byte[(int)contLen];
-        InputStreamReader in;
+        Reader in;
+
         try {
-            in = new InputStreamReader(connection.getInputStream());
+            in = new InputStreamReader(connection.getInputStream(), "ISO-8859-1");
             for (int i = 0; i < bytes.length; i++) {
-              int b = in.read( );
-              if (b  == -1) break;
-              bytes[i] = (byte) b;
-                System.out.print((char)bytes[i]);
+                bytes[i]=(byte)in.read( );
             }
         } catch (IOException ex) {
             failed(address.toString());

@@ -10,8 +10,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.io.StringReader;
 import java.net.Socket;
-import javax.security.auth.login.Configuration;
 import org.metastatic.rsync.ChecksumPair;
 
 public class MetaFileReader {
@@ -33,9 +33,9 @@ public class MetaFileReader {
 
     private String url;
     private File metafile;
-    private byte[] metafileBytes;
     private String filename;
     private ChainingHash hashtable;
+    private int fileOffset;
 
     /** Variables for header information from .zsync metafile */
     //------------------------------
@@ -52,7 +52,7 @@ public class MetaFileReader {
     //------------------------------
 
 
-    public MetaFileReader(String[] args) throws FileNotFoundException, IOException {
+    public MetaFileReader(String[] args) {
         Getopt g = new Getopt("jazsync", args, OPTSTRING, LONGOPTS);
         int c;
         Socket s;
@@ -99,8 +99,9 @@ public class MetaFileReader {
             metafile=new File(filename);
 
             /*
-             * nezjistujeme jestli je to URL ci file, ale zkusime zdali 
-             * jde o file, kdyz ne, tak se rovnou pokusime otevrit spojeni
+             * zjistime jestli soubor na disku existuje, pokud ne, presvedcime
+             * se zda to tedy je URL s definovanym http protokolem, pokud ne, 
+             * asi jde o soubor, ten vsak neexistuje -> konec programu
              */
             if(metafile.isFile()){
                 readMetaFile();
@@ -109,8 +110,10 @@ public class MetaFileReader {
             } else if (filename.startsWith("http://")) {
                 HttpConnection http = new HttpConnection(filename);
                 http.openConnection();
-                System.out.println(http.getResponseHeader());
-                metafileBytes = http.getMetafile();
+                http.getResponseHeader();
+                byte[] mfBytes=http.getMetafile();
+                readMetaFile(convertBytesToString(mfBytes));
+                fillHashTable(mfBytes);
             } else {
                 System.out.println(metafile+": No such file or directory");
             }
@@ -140,6 +143,11 @@ public class MetaFileReader {
     }
 
 
+    /**
+     *
+     * @param s
+     * @return
+     */
     private boolean parseHeader(String s){
         String subs;
         int colonIndex;
@@ -204,41 +212,76 @@ public class MetaFileReader {
         }
     }
 
+    private void readMetaFile(String s){
+        try{
+            BufferedReader in = new BufferedReader(new StringReader(s));
+            while ((s = in.readLine()) != null) {
+                if(parseHeader(s)){
+                    break;
+                }
+            }
+            in.close();
+        } catch (IOException e) {
+            System.out.println("IO problem in metafile header reading");
+        }
+    }
+
     /**
      *
-     * @throws FileNotFoundException
-     * @throws IOException
+     * @param bytes
+     * @return
      */
-    private void readChecksums() throws FileNotFoundException, IOException {
-        InputStream is = new FileInputStream(metafile);
-
-        long length=metafile.length();
-        if (metafile.length() > Integer.MAX_VALUE) {
-            System.out.println("Metafile is too large");
-            System.exit(1);
-        }
-        byte[] bytes = new byte[(int)length];
-        int offset = 0;
-        int n = 0;
-        while (offset<bytes.length && (n=is.read(bytes, offset, bytes.length-offset)) >= 0) {
-            offset += n;
-        }
-
-        // Presvedcime se, ze jsme precetli cely soubor
-        if (offset < bytes.length) {
-            throw new IOException("Could not completely read file "+metafile.getName());
-        }
-
-        // Zavre stream a urci offset, kde konci hlavicka a zacinaji kontrolni soucty
-        is.close();
-        int fileOffset = 0;
+    private String convertBytesToString(byte[] bytes){
         for(int i=2;i<bytes.length;i++){
             if(bytes[i-2]==10 && bytes[i-1]==10){
                 fileOffset=i;
                 break;
             }
         }
-        fillHashTable(bytes, fileOffset);
+        String header = new String(bytes);
+        return header;
+    }
+
+    /**
+     *
+     * @throws FileNotFoundException
+     * @throws IOException
+     */
+    private void readChecksums() {
+        long length=metafile.length();
+        if (metafile.length() > Integer.MAX_VALUE) {
+                System.out.println("Metafile is too large");
+                System.exit(1);
+            }
+        byte[] bytes = new byte[(int)length];
+
+        try {
+            InputStream is = new FileInputStream(metafile);
+            int offset = 0;
+            int n = 0;
+            while (offset<bytes.length && (n=is.read(bytes, offset, bytes.length-offset)) >= 0) {
+                offset += n;
+            }
+
+            // Presvedcime se, ze jsme precetli cely soubor
+            if (offset < bytes.length) {
+                throw new IOException("Could not completely read file "+metafile.getName());
+            }
+
+            // Zavre stream
+            is.close();
+            } catch (IOException e ) {
+                System.out.println("IO problem in metafile reading");
+            }
+        // urci offset, kde konci hlavicka a zacinaji kontrolni soucty
+        fileOffset = 0;
+        for(int i=2;i<bytes.length;i++){
+            if(bytes[i-2]==10 && bytes[i-1]==10){
+                fileOffset=i;
+                break;
+            }
+        }
+        fillHashTable(bytes);
     }
 
     /**
@@ -247,7 +290,7 @@ public class MetaFileReader {
      * @param fileOffset Offset in byte array indicating where header ends and
      * checksums starts
      */
-    private void fillHashTable(byte[] checksums, int fileOffset){
+    private void fillHashTable(byte[] checksums){
         int i=16;
         //spocteme velikost hashtable podle poctu bloku dat
         while((2 << (i-1)) > ((mf_length/mf_blocksize)+1) && i > 4) {
@@ -261,6 +304,7 @@ public class MetaFileReader {
         int weakSum=0;
         int seq=0;
         int off=fileOffset;
+
         byte[] weak=new byte[mf_rsum_bytes];
         byte[] strongSum=new byte[mf_checksum_bytes];
 
@@ -296,8 +340,9 @@ public class MetaFileReader {
             offset+=mf_blocksize;
             seq++;
             item = new Link(p);
-            hashtable.insert(item);
+            hashtable.insert(item);           
         }
+        hashtable.displayTable();
     }  
 
     /**
@@ -313,7 +358,7 @@ public class MetaFileReader {
         out.println("* -i, --inputfile=FILENAME       Specifies (extra) input files");
         out.println("* -k, --metafile=FILENAME        Indicates  that zsync should save the zsync file that it downloads, with the given filename");
         out.println("* -o, --outputfile=NEWNAME       Override the default output file name");
-        out.println("* -u, --url=URL                  Specifies URL of origin .zsync file in case that it contains a relative URL");
+        out.println("* -u, --url=URL                  Specifies URL of .zsync file in case that it contains a relative URL");
         out.println("* -s, --suppress                 Suppress the progress bar, download rate and ETA display");
         out.println("  -V, --version                  Show program version");
         out.println("* -v, --verbose                  Trace internal processing");
@@ -327,4 +372,53 @@ public class MetaFileReader {
         out.println("Version: Jazsync v0.0.1 (jazsync)");
         out.println("by Tomáš Hlavnička <hlavntom@fel.cvut.cz>");
     }
+
+    public ChainingHash getHashtable() {
+        return hashtable;
+    }
+
+    public String getMetaFileSource(){
+        return filename;
+    }
+
+    public int getBlocksize() {
+        return mf_blocksize;
+    }
+
+    public int getChecksumBytes() {
+        return mf_checksum_bytes;
+    }
+
+    public String getFilename() {
+        return mf_filename;
+    }
+
+    public long getLength() {
+        return mf_length;
+    }
+
+    public String getMtime() {
+        return mf_mtime;
+    }
+
+    public int getRsumBytes() {
+        return mf_rsum_bytes;
+    }
+
+    public int getSeqNum() {
+        return mf_seq_num;
+    }
+
+    public String getSha1() {
+        return mf_sha1;
+    }
+
+    public String getUrl() {
+        return mf_url;
+    }
+
+    public String getVersion() {
+        return mf_version;
+    }
+
 }

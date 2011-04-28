@@ -9,7 +9,8 @@ public class jazsync {
         args=new String[1];
         args[0]="/home/Solitary/jazsync.txt.zsync";
         //args[0]="http://fusal.wz.cz/jazsync.txt.zsync";
-        MetaFileReader mfr=new MetaFileReader(args);
+        FileMaker fm = new FileMaker(args);
+        
 
     }
 
