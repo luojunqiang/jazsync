@@ -1,20 +1,16 @@
 package jazsync;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.FileWriter;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.UnknownHostException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import sun.misc.BASE64Encoder;
 
 public class HttpConnection {
@@ -29,7 +25,6 @@ public class HttpConnection {
 
     public HttpConnection(String url) {
         try {
-            //address = new URL("http://fusal.wz.cz/jazsync.txt.zsync");
             address = new URL(url);
         } catch (MalformedURLException e) {
             failed(url);
@@ -114,14 +109,23 @@ public class HttpConnection {
             for (int i = 0; i < bytes.length; i++) {
                 bytes[i]=(byte)in.read( );
             }
-        } catch (IOException ex) {
+        } catch (IOException e) {
             failed(address.toString());
         }
         return bytes;
     }
 
-    public void getFile(){
-
+    public void getFile(Long length, String filename){
+        InputStreamReader in;
+        try {
+            FileOutputStream fos=new FileOutputStream(filename, true);
+            in = new InputStreamReader(connection.getInputStream(), "ISO-8859-1");
+            for(int i=0;i<length;i++){
+                fos.write((byte)in.read());
+            }
+        } catch (IOException e) {
+            failed(address.toString());
+        }
     }
     
     public String getResponseHeader(){

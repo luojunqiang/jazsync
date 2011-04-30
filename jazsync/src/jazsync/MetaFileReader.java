@@ -11,11 +11,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.io.StringReader;
+import java.net.MalformedURLException;
 import java.net.Socket;
+import java.net.URL;
 import org.metastatic.rsync.ChecksumPair;
 
 public class MetaFileReader {
-
+    
+    /** File existency and completion flag */
+    public static int FILE_FLAG = 0;
+     
     /** The short options. */
     private static final String OPTSTRING = "A:u:k:o:shVv";
 
@@ -105,17 +110,19 @@ public class MetaFileReader {
              */
             if(metafile.isFile()){
                 readMetaFile();
-                //checkOutputFile();
+                checkOutputFile();
                 readChecksums();
-            } else if (filename.startsWith("http://")) {
+            } else if (filename.startsWith("http://")) {   // HTTPS ????
                 HttpConnection http = new HttpConnection(filename);
                 http.openConnection();
                 http.getResponseHeader();
                 byte[] mfBytes=http.getMetafile();
                 readMetaFile(convertBytesToString(mfBytes));
+                checkOutputFile();
                 fillHashTable(mfBytes);
             } else {
                 System.out.println(metafile+": No such file or directory");
+                System.exit(1);
             }
             
         } else {
@@ -135,10 +142,12 @@ public class MetaFileReader {
                         + "used "+mf_length+" local, fetched 0");
                 System.exit(0);
             } else {
-                //dotahame potrebne bloky
+                //soubor mame, ale neni kompletni
+                FILE_FLAG = 1;
             }
         } else {
-            //stahneme cely soubor
+            //nutne stahnout cely soubor
+            FILE_FLAG = -1;
         }
     }
 
@@ -342,7 +351,6 @@ public class MetaFileReader {
             item = new Link(p);
             hashtable.insert(item);           
         }
-        hashtable.displayTable();
     }  
 
     /**
@@ -377,8 +385,8 @@ public class MetaFileReader {
         return hashtable;
     }
 
-    public String getMetaFileSource(){
-        return filename;
+    public URL getMetaFileSource() throws MalformedURLException{
+        return new URL(filename);
     }
 
     public int getBlocksize() {
