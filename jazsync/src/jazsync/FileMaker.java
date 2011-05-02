@@ -1,6 +1,7 @@
 package jazsync;
 
 import java.net.MalformedURLException;
+import java.net.URL;
 
 public class FileMaker {
 
@@ -26,12 +27,8 @@ public class FileMaker {
     private void getWholeFile() throws MalformedURLException{
         if(mfr.getUrl().startsWith("http://")){     //absolute URL path to file
             http = new HttpConnection(mfr.getUrl());
-        } else {                                    //relative URL path
-            String host = mfr.getMetaFileSource().getHost().toString();
-            String pathToFile = mfr.getMetaFileSource().getPath().toString();
-            pathToFile=pathToFile.substring(0, pathToFile.lastIndexOf("/"));
-            String url = ("http://"+host+pathToFile+"/"+mfr.getUrl());
-            http = new HttpConnection(url);
+        } else {                                    //relative URL path to file
+            http = new HttpConnection(urlParser(mfr.getMetaFileURL()));
         }
         http.openConnection();
         http.getFile(mfr.getLength(), mfr.getFilename());
@@ -41,5 +38,13 @@ public class FileMaker {
             System.out.println("verifying download...checksum matches OK");
             System.exit(0);
         }
+    }
+    
+    private String urlParser(URL url){
+        String host = url.getHost().toString();
+        String pathToFile = url.getPath().toString();
+        pathToFile=pathToFile.substring(0, pathToFile.lastIndexOf("/"));
+        String newUrl = ("http://"+host+pathToFile+"/"+mfr.getUrl());
+        return newUrl;
     }
 }

@@ -153,9 +153,9 @@ public class MetaFileReader {
 
 
     /**
-     *
-     * @param s
-     * @return
+     * Parsing method for metafile headers, saving each value into separate variable.
+     * @param s String containing metafile
+     * @return Boolean value notifying whether header ended or not (true = end of header)
      */
     private boolean parseHeader(String s){
         String subs;
@@ -203,8 +203,8 @@ public class MetaFileReader {
     }
 
     /**
-     * Method gets informations from metafile header and store values
-     * in variables mf_variable
+     * Method reads metafile from file and reads
+     * it line by line, sending line String to parser.
      */
     private void readMetaFile(){
         try {
@@ -220,7 +220,11 @@ public class MetaFileReader {
             System.out.println("IO problem in metafile header reading");
         }
     }
-
+    /**
+     * Method reads metafile from String and reads
+     * it line by line, sending line String to parser.
+     * @param s Metafile in String form
+     */
     private void readMetaFile(String s){
         try{
             BufferedReader in = new BufferedReader(new StringReader(s));
@@ -236,7 +240,8 @@ public class MetaFileReader {
     }
 
     /**
-     *
+     * Method converts downloaded metafile from byte array into String and
+     * saves offset where headers end and blocksums starts.
      * @param bytes
      * @return
      */
@@ -252,9 +257,8 @@ public class MetaFileReader {
     }
 
     /**
-     *
-     * @throws FileNotFoundException
-     * @throws IOException
+     * Method that reads metafile from file and stores its content into byte array
+     * and saves offset where headers end and blocksums starts.
      */
     private void readChecksums() {
         long length=metafile.length();
@@ -296,8 +300,6 @@ public class MetaFileReader {
     /**
      * Fills a chaining hash table with ChecksumPairs
      * @param checksums Byte array with bytes of whole metafile
-     * @param fileOffset Offset in byte array indicating where header ends and
-     * checksums starts
      */
     private void fillHashTable(byte[] checksums){
         int i=16;
@@ -385,7 +387,7 @@ public class MetaFileReader {
         return hashtable;
     }
 
-    public URL getMetaFileSource() throws MalformedURLException{
+    public URL getMetaFileURL() throws MalformedURLException{
         return new URL(filename);
     }
 

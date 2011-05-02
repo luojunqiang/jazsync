@@ -103,11 +103,10 @@ public class HttpConnection {
     public byte[] getMetafile(){
         byte[] bytes = new byte[(int)contLen];
         Reader in;
-
         try {
             in = new InputStreamReader(connection.getInputStream(), "ISO-8859-1");
             for (int i = 0; i < bytes.length; i++) {
-                bytes[i]=(byte)in.read( );
+                bytes[i]=(byte)in.read();
             }
         } catch (IOException e) {
             failed(address.toString());
@@ -132,37 +131,35 @@ public class HttpConnection {
         String header="";
         Map responseHeader = connection.getHeaderFields();
             for (Iterator iterator = responseHeader.keySet().iterator(); iterator.hasNext();) {
-                
                 String key = (String) iterator.next();
                 if(key!=null) {
                     header+=key + " = ";
                 }
-
                 List values = (List) responseHeader.get(key);
                 for (int i = 0; i < values.size(); i++) {
                     Object o = values.get(i);
                     header+=o.toString();
-                    getBoundary(key,o.toString());
-                    getLength(key,o.toString());
+                    parseBoundary(key,o.toString());
+                    parseLength(key,o.toString());
                 }
                 header+="\n";
             }
         return header;
     }
 
-    private void getLength(String key, String values){
+    private void parseLength(String key, String values){
         if(key!=null && key.equals("Content-Length")==true){
             contLen=Integer.valueOf(values);
         }
     }
 
     /**
-     * Gets boundary sequence from response header for indetification of range
+     * Gets boundary sequence from response header for identificating the range
      * boundaries
      * @param key Key name of header line
      * @param values Values of key header line
      */
-    private void getBoundary(String key, String values){
+    private void parseBoundary(String key, String values){
         if(getHttpStatusCode()==206 && key!=null && key.equals("Content-Type")==true){
             int index=values.indexOf("boundary");
             if(index!=-1){
