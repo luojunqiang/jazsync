@@ -191,7 +191,7 @@ public class MatcherStream
       }
     else
       {
-        config.weakSum.roll(b);
+        //config.weakSum.roll(b);
       }
     Long oldOffset = hashSearch(buffer, ndx - config.blockLength,
                                 config.blockLength);
@@ -319,7 +319,7 @@ public class MatcherStream
           }
         else
           {
-            config.weakSum.roll(bt);
+            //config.weakSum.roll(bt);
           }
         oldOffset = hashSearch(buffer, ndx - config.blockLength,
                                config.blockLength);

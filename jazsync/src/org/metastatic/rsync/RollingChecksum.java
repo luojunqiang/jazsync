@@ -74,7 +74,7 @@ public interface RollingChecksum extends Cloneable, java.io.Serializable {
     *
     * @param bt The next byte.
     */
-   void roll(byte bt);
+   void roll(byte b);
 
    /**
     * Update the checksum by simply "trimming" the
@@ -111,4 +111,6 @@ public interface RollingChecksum extends Cloneable, java.io.Serializable {
     *         checksum.
     */
    boolean equals(Object o);
+
+   void first(byte[] buf, int offset, int blockLength);
 }

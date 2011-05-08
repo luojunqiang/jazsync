@@ -127,6 +127,10 @@ public class ChecksumPair implements java.io.Serializable {
       this(weak, strong, -1L, 0, 0);
    }
 
+   public ChecksumPair(int weak){
+       this(weak, null, -1L, 0, 0);
+   }
+
    /**
     * Default 0-arguments constructor for package access.
     */

@@ -49,6 +49,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -175,16 +176,13 @@ public class Generator {
                 break;
             }
             /*
-             * V pripade, ze mnozstvi dat nevyplni celou blocksize, doplnime
-             * data nulami az do velikosti blocksize
+             * V pripade, ze mnozstvi dat nevyplni celou blocksize, vyplnime
+             * nezaplnene misto v bufferu nulami
              */
             if (n < config.blockLength) {
-                int index = n;
-                for (int j = 0; j < (config.blockLength - n); j++) {
-                    buf[index] = 0;
-                    index++;
-                }
+                Arrays.fill(buf, n, config.blockLength, (byte)0);
             }
+
             /* spocita sumy pouze pokud je mnozstvi dat vetsi nez 0,
              * a spocita je pro cely blok velikosti blocksize
              * data, ktera nevyplnila celou blocksize jsou doplnena nulami
@@ -267,5 +265,24 @@ public class Generator {
       p.offset = fileOffset;
       p.length = len;
       return p;
+   }
+
+   public int generateWeakSum(byte[] buf, int offset){
+       config.weakSum.first(buf, offset, config.blockLength);
+       int weakSum = config.weakSum.getValue();
+       return weakSum;
+   }
+
+   public int generateRollSum(byte b){
+       config.weakSum.roll(b);
+       int weakSum = config.weakSum.getValue();
+       return weakSum;
+   }
+
+   public byte[] generateStrongSum(byte[] buf, int off, int len, long fileOffset){
+       config.strongSum.update(buf);
+       byte[] strongSum = new byte[config.strongSumLength];
+       System.arraycopy(config.strongSum.digest(), 0, strongSum, 0, strongSum.length);
+       return strongSum;
    }
 }

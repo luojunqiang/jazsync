@@ -1,6 +1,7 @@
 package jazsync;
 
 import java.io.IOException;
+import java.util.Arrays;
 import org.metastatic.rsync.ChecksumPair;
 
 /**
@@ -14,6 +15,14 @@ class Link {
 
     public Link(ChecksumPair p) {
         blockSums = p;
+    }
+
+    public int getWeakKey() {
+        return blockSums.getWeak();
+    }
+
+    public byte[] getStrongKey(){
+        return blockSums.getStrong();
     }
 
     public ChecksumPair getKey() {
@@ -70,9 +79,20 @@ class SortedList {
 
     public Link find(ChecksumPair pKey) {
         Link current = first;
-        while (current != null && current.getKey().getOffset() <= pKey.getOffset()) {
-            if (current.getKey() == pKey) 
-            {
+        while (current != null) {
+            if (current.getWeakKey() == pKey.getWeak()) {
+                return current;
+            }
+            current = current.next;
+        }
+        return null;
+    }
+
+    public Link findMatch(ChecksumPair pKey) {
+        Link current = first;
+        while (current != null) {
+            if (current.getWeakKey() == pKey.getWeak() &&
+                    Arrays.equals(current.getStrongKey(),pKey.getStrong())) {
                 return current;
             }
             current = current.next;
@@ -125,13 +145,19 @@ public class ChainingHash {
     }
 
     public void delete(ChecksumPair pKey) {
-        int hashVal = hashFunc(pKey); // zahashujeme klic
+        int hashVal = hashFunc(pKey);
         hashArray[hashVal].delete(pKey);
     }
 
     public Link find(ChecksumPair pKey) {
         int hashVal = hashFunc(pKey);
         Link theLink = hashArray[hashVal].find(pKey); 
+        return theLink;
+    }
+
+    public Link findMatch(ChecksumPair pKey) {
+        int hashVal = hashFunc(pKey);
+        Link theLink = hashArray[hashVal].findMatch(pKey);
         return theLink;
     }
 }

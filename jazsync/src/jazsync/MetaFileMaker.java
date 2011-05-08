@@ -12,7 +12,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.Security;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import org.metastatic.rsync.ChecksumPair;
 import org.metastatic.rsync.Configuration;
@@ -41,15 +40,15 @@ public class MetaFileMaker {
         new LongOpt("verbose",    LongOpt.NO_ARGUMENT, null, 'v')
     };
 
-    private static String url;
-    private static int blocksize;
-    private static int strongSumLength;
-    private static String filename;
-    private static File file;
-    private static String outputfile;
-    private static boolean noURL=true;
-    private static boolean newNameFile=false;
-    private static String header;
+    private String url;
+    private int blocksize;
+    private int strongSumLength;
+    private String filename;
+    private File file;
+    private String outputfile;
+    private boolean noURL=true;
+    private boolean newNameFile=false;
+    private String header;
     
     
     public MetaFileMaker(String[] args) {
@@ -144,11 +143,12 @@ public class MetaFileMaker {
             config.blockLength = blocksize;
             config.strongSumLength = strongSumLength;
             Generator gen = new Generator(config);
-            List<ChecksumPair> list = new ArrayList<ChecksumPair>((int)(file.length()/blocksize)+1);
+            List<ChecksumPair> list = new ArrayList<ChecksumPair>(Math.round((float)file.length() / (float)blocksize));
             list = gen.generateSums(file);
             for(ChecksumPair p : list){
                 fos.write(intToBytes(p.getWeak()));
                 fos.write(p.getStrong());
+                System.out.println(p.getWeak());
             }
         } catch (IOException ioe){
             System.out.println("IO problem in metafile checksums writing");

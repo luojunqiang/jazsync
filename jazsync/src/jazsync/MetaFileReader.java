@@ -19,7 +19,7 @@ import org.metastatic.rsync.ChecksumPair;
 public class MetaFileReader {
     
     /** File existency and completion flag */
-    public static int FILE_FLAG = 0;
+    public int FILE_FLAG = 0;
      
     /** The short options. */
     private static final String OPTSTRING = "A:u:k:o:shVv";
@@ -41,6 +41,7 @@ public class MetaFileReader {
     private String filename;
     private ChainingHash hashtable;
     private int fileOffset;
+    private int blockNum;
 
     /** Variables for header information from .zsync metafile */
     //------------------------------
@@ -110,6 +111,7 @@ public class MetaFileReader {
              */
             if(metafile.isFile()){
                 readMetaFile();
+                blockNum = Math.round((float)mf_length / (float)mf_blocksize);
                 checkOutputFile();
                 readChecksums();
             } else if (filename.startsWith("http://")) {   // HTTPS ????
@@ -117,7 +119,9 @@ public class MetaFileReader {
                 http.openConnection();
                 http.getResponseHeader();
                 byte[] mfBytes=http.getMetafile();
+                http.closeConnection();
                 readMetaFile(convertBytesToString(mfBytes));
+                blockNum = Math.round((float)mf_length / (float)mf_blocksize);
                 checkOutputFile();
                 fillHashTable(mfBytes);
             } else {
@@ -132,6 +136,8 @@ public class MetaFileReader {
         }
     }
 
+
+
     private void checkOutputFile(){
         File file = new File(mf_filename);
         if(file.isFile()){
@@ -140,7 +146,7 @@ public class MetaFileReader {
                 System.out.println("Read "+mf_filename+". Target 100.0% complete.\n"
                         + "verifying download...checksum matches OK\n"
                         + "used "+mf_length+" local, fetched 0");
-                System.exit(0);
+                //System.exit(0);
             } else {
                 //soubor mame, ale neni kompletni
                 FILE_FLAG = 1;
@@ -304,7 +310,7 @@ public class MetaFileReader {
     private void fillHashTable(byte[] checksums){
         int i=16;
         //spocteme velikost hashtable podle poctu bloku dat
-        while((2 << (i-1)) > ((mf_length/mf_blocksize)+1) && i > 4) {
+        while((2 << (i-1)) > blockNum && i > 4) {
             i--;
         }
         //vytvorime hashtable o velikosti 2^i (max. 2^16, min. 2^4)
@@ -319,7 +325,7 @@ public class MetaFileReader {
         byte[] weak=new byte[mf_rsum_bytes];
         byte[] strongSum=new byte[mf_checksum_bytes];
 
-        while(seq < (mf_length/mf_blocksize)+1){
+        while(seq < blockNum){
 
             for(int w=0;w<weak.length;w++){
                 weak[w]=checksums[off];
@@ -346,7 +352,7 @@ public class MetaFileReader {
             weakSum+=(weak[0] & 0x000000FF) << 8;
             weakSum+=(weak[1] & 0x000000FF);
             //*********************************************
-            
+
             p = new ChecksumPair(weakSum,strongSum,offset,mf_blocksize,seq);
             offset+=mf_blocksize;
             seq++;
@@ -385,6 +391,10 @@ public class MetaFileReader {
 
     public ChainingHash getHashtable() {
         return hashtable;
+    }
+
+    public int getBlockCount(){
+        return blockNum;
     }
 
     public URL getMetaFileURL() throws MalformedURLException{

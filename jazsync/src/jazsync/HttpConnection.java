@@ -147,6 +147,11 @@ public class HttpConnection {
         return header;
     }
 
+    /**
+     * Method parse
+     * @param key
+     * @param values
+     */
     private void parseLength(String key, String values){
         if(key!=null && key.equals("Content-Length")==true){
             contLen=Integer.valueOf(values);

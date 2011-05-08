@@ -181,13 +181,13 @@ public class Checksum32 implements RollingChecksum, Cloneable, java.io.Serializa
    */
   public void roll(byte bt)
   {
-    a -= block[k] + char_offset;
-    b -= l * (block[k] + char_offset);
-    a += bt + char_offset;
-    b += a;
-    block[k] = bt;
-    k++;
-    if (k == l) k = 0;
+//    a -= block[k] + char_offset;
+//    b -= l * (block[k] + char_offset);
+//    a += bt + char_offset;
+//    b += a;
+//    block[k] = bt;
+//    k++;
+//    if (k == l) k = 0;
   }
 
   /**
@@ -250,4 +250,9 @@ public class Checksum32 implements RollingChecksum, Cloneable, java.io.Serializa
   {
     return ((Checksum32)o).a == a && ((Checksum32)o).b == b;
   }
+
+    @Override
+    public void first(byte[] buf, int offset, int blockLength) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
 }
