@@ -148,7 +148,7 @@ public class MetaFileMaker {
             for(ChecksumPair p : list){
                 fos.write(intToBytes(p.getWeak()));
                 fos.write(p.getStrong());
-                System.out.println(p.getWeak());
+                System.out.println(p.toString());
             }
         } catch (IOException ioe){
             System.out.println("IO problem in metafile checksums writing");

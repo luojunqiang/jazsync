@@ -86,42 +86,49 @@ public class FileMaker {
         int[] fileMap = new int[mfr.getBlockCount()];
         ChecksumPair p;
         int weakSum;
+
+        byte[] strongSum;
+        byte[] backBuffer=new byte[mfr.getBlocksize()];
+        byte[] blockBuffer=new byte[mfr.getBlocksize()];
         byte[] fileBuffer;
-        fileBuffer = new byte[256];
-        if(mfr.getLength() <= 1048576){
-            fileBuffer = new byte[(int)mfr.getLength()+mfr.getBlocksize()];
+        
+        fileBuffer = new byte[150];
+        if(mfr.getLength() < 1048576 && mfr.getBlocksize() < mfr.getLength()){
+            fileBuffer = new byte[(int)mfr.getLength()];
+        } else if (mfr.getBlocksize()>mfr.getLength()) {
+            fileBuffer = new byte[mfr.getBlocksize()];
         } else {
             fileBuffer = new byte[1048576];
         }
 
         InputStream is = new FileInputStream(mfr.getFilename());
         int n=0;
-        int offset=0;
         byte newByte;
         boolean firstBlock=true;
         long fileOffset=1;
         int len=fileBuffer.length;
         boolean end = false;
-        int y=mfr.getBlocksize()+1;
         long start = System.currentTimeMillis();
+        
         while (true) {
-            n=is.read(fileBuffer,offset,len-offset);
+            n=is.read(fileBuffer,0,len);
             //System.out.println("*********** Bytes read: "+n+" ***********");
-            if(n==-1){
-                break;
-            }
-            
 
+            /** Inicializujeme rolling checksum tim, ze spocteme kontrolni soucet
+             *  v prvni offsetu
+             */
             if(firstBlock){
                 weakSum = gen.generateWeakSum(fileBuffer, 0);
                 bufferOffset=mfr.getBlocksize();
                 System.out.println("0. "+weakSum);
                 if(hashLookUp(weakSum, null)){
-                    
+                    strongSum = gen.generateStrongSum(fileBuffer, 0, mfr.getBlocksize());
+                    hashLookUp(weakSum, strongSum);
                 }
                 firstBlock=false;
             }
-
+            
+            //zde muzeme zapocit rolling checksum
             for( ; bufferOffset<fileBuffer.length ; bufferOffset++){
                 newByte = fileBuffer[bufferOffset];
                 if(fileOffset+mfr.getBlocksize()>mfr.getLength()){
@@ -130,21 +137,45 @@ public class FileMaker {
                 /** Spocteme rolling checksum */
                 weakSum = gen.generateRollSum(newByte);
                 
-                /** Nahledneme do hashtablu */
-                //System.out.println(fileOffset+" "+bufferOffset+". "+weakSum);
-                hashLookUp(weakSum, null);
-                
-//                p = new ChecksumPair(weakSum);
-//                Link link = hashtable.find(p);
-//                if(link!=null){
-//
-//                    System.out.println(fileOffset+" "+bufferOffset+". "+weakSum);
-//                    link.displayLink();
-//                    System.out.println("\n");
-//                }
-                
+                /**
+                 * V pripade, ze nalezeneme v hash tabulce shodu k slabemu
+                 * rolling checksumu, zacneme pocitat i silny (MD4) checksum,
+                 * abychom se ujistili, ze neslo pouze o kolizi.
+                 */ 
+                if(hashLookUp(weakSum, null)){
+                    //System.out.println(fileOffset+" "+bufferOffset+". "+weakSum);
 
+                    if(fileOffset+mfr.getBlocksize()>mfr.getLength()){
+                        if(n>0){
+                            Arrays.fill(fileBuffer, n, fileBuffer.length, (byte)0);
+                        } else {
+                            int offset=fileBuffer.length-mfr.getBlocksize()+bufferOffset+1;
+                            System.arraycopy(fileBuffer, offset, blockBuffer, 0, fileBuffer.length-offset);
+                            Arrays.fill(blockBuffer, fileBuffer.length-offset, blockBuffer.length, (byte)0);
+                        }
+                    }
 
+                    if((bufferOffset-mfr.getBlocksize()+1)<0){
+                        if(n>0){
+                            System.arraycopy(backBuffer,
+                                    backBuffer.length+bufferOffset-mfr.getBlocksize()+1,
+                                    blockBuffer, 0, mfr.getBlocksize()-bufferOffset-1);
+
+                            System.arraycopy(fileBuffer, 0, blockBuffer,
+                                    mfr.getBlocksize()-bufferOffset-1, bufferOffset+1);
+                        }
+                        strongSum = gen.generateStrongSum(blockBuffer,
+                                0, mfr.getBlocksize() );
+                        hashLookUp(weakSum, strongSum);
+                    } else {
+                        strongSum = gen.generateStrongSum(fileBuffer,
+                                bufferOffset-mfr.getBlocksize()+1,
+                                mfr.getBlocksize() );
+                        hashLookUp(weakSum, strongSum);
+                    }
+                    
+
+                }
 
                 fileOffset++;
                 if(fileOffset==mfr.getLength()){
@@ -152,21 +183,17 @@ public class FileMaker {
                     break;
                 }
             }
-
+            System.arraycopy(fileBuffer, fileBuffer.length-mfr.getBlocksize(),
+                    backBuffer, 0, mfr.getBlocksize());
+            bufferOffset=0;
             if(end){
                 break;
             }
-
-            bufferOffset=0;
-            
-            for(int x=0;y<fileBuffer.length;x++){
-                fileBuffer[x]=fileBuffer[y];
-                y++;
-            }
-
         }
+
         long endT = System.currentTimeMillis();
         System.out.println("Doba mapovani souboru: "+(double)(endT-start)/1000+"s");
+
         is.close();     
     }
 
@@ -176,16 +203,19 @@ public class FileMaker {
             p = new ChecksumPair(weakSum);
             Link link = hashtable.find(p);
             if(link!=null){
-                link.displayLink();
-                System.out.println("\n");
+//                System.out.println("Shoda slabeho souctu na ");
+//                link.displayLink();
+//                System.out.println("\n");
                 return true;
             }
         } else {
             p = new ChecksumPair(weakSum, strongSum);
+            //System.out.println(p.getStrongHex());
             Link link = hashtable.findMatch(p);
             if(link!=null){
-                link.displayLink();
-                System.out.println("\n");
+//                System.out.println("Shoda silneho souctu na ");
+//                link.displayLink();
+//                System.out.println("\n");
                 return true;
             }
         }

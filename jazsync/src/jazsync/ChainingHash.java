@@ -30,7 +30,7 @@ class Link {
     }
 
     public void displayLink() {
-        System.out.print(blockSums.getSequence() + " ");
+        System.out.print(blockSums.toString() + " ");
     }
 }
 
@@ -50,7 +50,7 @@ class SortedList {
         ChecksumPair pKey = link.getKey();
         Link previous = null;
         Link current = first;
-        while (current != null && pKey.getOffset() > current.getKey().getOffset()) {
+        while (current != null) {
             previous = current;
             current = current.next;
         }

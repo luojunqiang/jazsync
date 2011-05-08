@@ -14,6 +14,7 @@ import java.io.StringReader;
 import java.net.MalformedURLException;
 import java.net.Socket;
 import java.net.URL;
+import java.util.Arrays;
 import org.metastatic.rsync.ChecksumPair;
 
 public class MetaFileReader {
@@ -315,7 +316,7 @@ public class MetaFileReader {
         }
         //vytvorime hashtable o velikosti 2^i (max. 2^16, min. 2^4)
         hashtable = new ChainingHash(2 << (i-1));
-        ChecksumPair p;
+        ChecksumPair p = null;
         Link item;
         int offset=0;
         int weakSum=0;
@@ -352,12 +353,11 @@ public class MetaFileReader {
             weakSum+=(weak[0] & 0x000000FF) << 8;
             weakSum+=(weak[1] & 0x000000FF);
             //*********************************************
-
-            p = new ChecksumPair(weakSum,strongSum,offset,mf_blocksize,seq);
+            p = new ChecksumPair(weakSum,strongSum.clone(),offset,mf_blocksize,seq);
             offset+=mf_blocksize;
             seq++;
             item = new Link(p);
-            hashtable.insert(item);           
+            hashtable.insert(item);
         }
     }  
 

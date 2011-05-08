@@ -53,7 +53,7 @@ import java.util.Arrays;
  * @author Casey Marshall
  * @version $Revision: 1.9 $
  */
-public class ChecksumPair implements java.io.Serializable {
+public class ChecksumPair implements Cloneable, java.io.Serializable {
 
    // Constants and variables.
    // -------------------------------------------------------------------------
