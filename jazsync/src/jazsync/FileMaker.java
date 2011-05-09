@@ -30,10 +30,15 @@ public class FileMaker {
     private ChainingHash hashtable;
     private Configuration config;
     private int bufferOffset;
+    private long fileOffset;
+    private long[] fileMap;
 
     public FileMaker(String[] args) throws MalformedURLException, NoSuchAlgorithmException, FileNotFoundException, IOException{
          mfr = new MetaFileReader(args);
          hashtable = mfr.getHashtable();
+         fileMap = new long[mfr.getBlockCount()];
+         Arrays.fill(fileMap, -1);
+         fileOffset=0;
          checkSimilarity();
          if(mfr.FILE_FLAG==1) {
              System.out.println("Stahneme par bloku");
@@ -83,10 +88,8 @@ public class FileMaker {
         config.blockLength = mfr.getBlocksize();
         config.strongSumLength = mfr.getChecksumBytes();
         Generator gen = new Generator(config);
-        int[] fileMap = new int[mfr.getBlockCount()];
-        ChecksumPair p;
-        int weakSum;
 
+        int weakSum;
         byte[] strongSum;
         byte[] backBuffer=new byte[mfr.getBlocksize()];
         byte[] blockBuffer=new byte[mfr.getBlocksize()];
@@ -102,10 +105,10 @@ public class FileMaker {
         }
 
         InputStream is = new FileInputStream(mfr.getFilename());
+        File test = new File(mfr.getFilename());
         int n=0;
         byte newByte;
         boolean firstBlock=true;
-        long fileOffset=1;
         int len=fileBuffer.length;
         boolean end = false;
         long start = System.currentTimeMillis();
@@ -113,27 +116,29 @@ public class FileMaker {
         while (true) {
             n=is.read(fileBuffer,0,len);
             //System.out.println("*********** Bytes read: "+n+" ***********");
-
             /** Inicializujeme rolling checksum tim, ze spocteme kontrolni soucet
              *  v prvni offsetu
              */
             if(firstBlock){
                 weakSum = gen.generateWeakSum(fileBuffer, 0);
                 bufferOffset=mfr.getBlocksize();
-                System.out.println("0. "+weakSum);
+                //System.out.println("0. "+weakSum);
                 if(hashLookUp(weakSum, null)){
                     strongSum = gen.generateStrongSum(fileBuffer, 0, mfr.getBlocksize());
                     hashLookUp(weakSum, strongSum);
                 }
+                fileOffset++;
                 firstBlock=false;
             }
             
             //zde muzeme zapocit rolling checksum
             for( ; bufferOffset<fileBuffer.length ; bufferOffset++){
+                
                 newByte = fileBuffer[bufferOffset];
-                if(fileOffset+mfr.getBlocksize()>mfr.getLength()){
+                if(fileOffset+mfr.getBlocksize()>test.length()){
                     newByte=0;
                 }
+
                 /** Spocteme rolling checksum */
                 weakSum = gen.generateRollSum(newByte);
                 
@@ -141,11 +146,12 @@ public class FileMaker {
                  * V pripade, ze nalezeneme v hash tabulce shodu k slabemu
                  * rolling checksumu, zacneme pocitat i silny (MD4) checksum,
                  * abychom se ujistili, ze neslo pouze o kolizi.
-                 */ 
+                 */
+                //System.out.println(fileOffset+" "+bufferOffset+". "+weakSum);
                 if(hashLookUp(weakSum, null)){
-                    //System.out.println(fileOffset+" "+bufferOffset+". "+weakSum);
+                    
 
-                    if(fileOffset+mfr.getBlocksize()>mfr.getLength()){
+                    if(fileOffset+mfr.getBlocksize()>test.length()){
                         if(n>0){
                             Arrays.fill(fileBuffer, n, fileBuffer.length, (byte)0);
                         } else {
@@ -178,7 +184,7 @@ public class FileMaker {
                 }
 
                 fileOffset++;
-                if(fileOffset==mfr.getLength()){
+                if(fileOffset==test.length()){
                     end=true;
                     break;
                 }
@@ -193,7 +199,7 @@ public class FileMaker {
 
         long endT = System.currentTimeMillis();
         System.out.println("Doba mapovani souboru: "+(double)(endT-start)/1000+"s");
-
+        System.out.println(Arrays.toString(fileMap));
         is.close();     
     }
 
@@ -210,12 +216,10 @@ public class FileMaker {
             }
         } else {
             p = new ChecksumPair(weakSum, strongSum);
-            //System.out.println(p.getStrongHex());
+            System.out.println(p.getStrongHex()); 
             Link link = hashtable.findMatch(p);
             if(link!=null){
-//                System.out.println("Shoda silneho souctu na ");
-//                link.displayLink();
-//                System.out.println("\n");
+                fileMap[link.getKey().getSequence()]=fileOffset;
                 return true;
             }
         }
