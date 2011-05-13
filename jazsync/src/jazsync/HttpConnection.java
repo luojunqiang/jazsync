@@ -3,6 +3,7 @@ package jazsync;
 import java.io.BufferedReader;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.HttpURLConnection;
@@ -22,6 +23,7 @@ public class HttpConnection {
     private URL address;
     private String boundary;
     private long contLen;
+    private String charSet="UTF-8";
 
     public HttpConnection(String url) {
         try {
@@ -47,18 +49,25 @@ public class HttpConnection {
     public void openConnection(){
         try {
             connection = (HttpURLConnection)address.openConnection();
+        } catch (MalformedURLException e) {
+            failed(address.toString());
+        } catch (IOException e) {
+           failed(address.toString());
+            //e.printStackTrace();
+        }
+    }
+
+    public void sendRequest(){
+        try{
             connection.setRequestMethod("GET");
             if(username!=null && password!=null){
                 encoding = new BASE64Encoder().encode((username+":"+password).getBytes());
                 connection.setRequestProperty("Authorization", "Basic "+encoding);
             } else if (rangeRequest!=null){
                 connection.setRequestProperty("Range", "bytes="+rangeRequest);
-            } 
-        } catch (MalformedURLException e) {
-            failed(address.toString());
+            }
         } catch (IOException e) {
            failed(address.toString());
-            //e.printStackTrace();
         }
     }
 
@@ -87,24 +96,10 @@ public class HttpConnection {
         this.password=password;
     }
 
-    public void getResponseBody(){
-        try {
-            BufferedReader br = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-            String line;
-            while ((line = br.readLine()) != null) {
-                System.out.println(line);
-            }
-            br.close();
-        } catch (IOException e){
-            failed(address.toString());
-        }
-    }
-
-    public byte[] getMetafile(){
+    public byte[] getResponseBody(){
         byte[] bytes = new byte[(int)contLen];
-        Reader in;
         try {
-            in = new InputStreamReader(connection.getInputStream(), "ISO-8859-1");
+            InputStream in = connection.getInputStream();
             for (int i = 0; i < bytes.length; i++) {
                 bytes[i]=(byte)in.read();
             }
@@ -115,10 +110,9 @@ public class HttpConnection {
     }
 
     public void getFile(Long length, String filename){
-        InputStreamReader in;
         try {
             FileOutputStream fos=new FileOutputStream(filename, true);
-            in = new InputStreamReader(connection.getInputStream(), "ISO-8859-1");
+            InputStream in = connection.getInputStream();
             for(int i=0;i<length;i++){
                 fos.write((byte)in.read());
             }
@@ -141,10 +135,20 @@ public class HttpConnection {
                     header+=o.toString();
                     parseBoundary(key,o.toString());
                     parseLength(key,o.toString());
+                    parseCharset(key,o.toString());
                 }
                 header+="\n";
             }
         return header;
+    }
+
+    private void parseCharset(String key, String values){
+        if(key!=null && key.equals("Content-Type")==true){
+            int index=values.indexOf("charset");
+            if(index!=-1){
+                charSet=values.substring(index+"charset=".length());
+            }
+        }
     }
 
     /**

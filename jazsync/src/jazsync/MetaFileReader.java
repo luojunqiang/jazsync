@@ -119,7 +119,7 @@ public class MetaFileReader {
                 HttpConnection http = new HttpConnection(filename);
                 http.openConnection();
                 http.getResponseHeader();
-                byte[] mfBytes=http.getMetafile();
+                byte[] mfBytes=http.getResponseBody();
                 http.closeConnection();
                 readMetaFile(convertBytesToString(mfBytes));
                 blockNum = Math.round((float)mf_length / (float)mf_blocksize);
@@ -150,10 +150,12 @@ public class MetaFileReader {
                 //System.exit(0);
             } else {
                 //soubor mame, ale neni kompletni
+                System.out.println("Mame nekompletni");
                 FILE_FLAG = 1;
             }
         } else {
             //nutne stahnout cely soubor
+            System.out.println("Mame kompletni");
             FILE_FLAG = -1;
         }
     }

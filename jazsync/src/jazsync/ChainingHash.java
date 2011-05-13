@@ -65,10 +65,10 @@ class SortedList {
     public void delete(ChecksumPair key) {
         Link previous = null;
         Link current = first;
-
-        while (current != null && key != current.getKey()) {
+        while (current != null && !key.equals(current.getKey())) {
             previous = current;
             current = current.next;
+            
         }
         if (previous == null) {
             first = first.next;

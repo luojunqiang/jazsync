@@ -2,7 +2,7 @@ package jazsync;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
+import java.util.Date;
 import java.util.Locale;
 
 public class HeaderMaker {
@@ -39,10 +39,11 @@ SHA-1: 5944ec77b9b0f2d6b8212d142970117f5801430a
     private int seq_num=1;
     private int rsum_bytes=4;
     private int checksum_bytes=16;
+    private long mtime=0;
 
     public HeaderMaker(File file, String filename, String url, int blocksize, int checksum_bytes){
         Version+="jazsync";
-
+        this.mtime=file.lastModified();
         if(filename==null){
             Filename+=file.getName();   //default
             this.filename=file.getName();
@@ -51,7 +52,7 @@ SHA-1: 5944ec77b9b0f2d6b8212d142970117f5801430a
             this.filename=filename;
         }
 
-        MTime+=now("EEE, dd MMMMM yyyy HH:mm:ss Z");
+        MTime+=now("EEE, dd MMM yyyy HH:mm:ss Z");
         Length+=file.length();
         length=file.length();
 
@@ -94,9 +95,10 @@ SHA-1: 5944ec77b9b0f2d6b8212d142970117f5801430a
 
 
     private String now(String dateFormat) {
-        Calendar cal = Calendar.getInstance();
+        Date date = new Date();
+        date.setTime(mtime);
         SimpleDateFormat sdf = new SimpleDateFormat(dateFormat,Locale.US);
-        return sdf.format(cal.getTime());
+        return sdf.format(date);
     }
 
     public String getFullHeader(){

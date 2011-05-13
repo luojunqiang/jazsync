@@ -131,6 +131,10 @@ public class ChecksumPair implements Cloneable, java.io.Serializable {
        this(weak, null, -1L, 0, 0);
    }
 
+   public ChecksumPair(int weak, byte[] strong, int seq){
+       this(weak, null, -1L, 0, seq);
+   }
+
    /**
     * Default 0-arguments constructor for package access.
     */
