@@ -1,5 +1,6 @@
 package jazsync;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.security.MessageDigest;
@@ -19,6 +20,10 @@ public class SHA1 {
      */
     public SHA1(String filename){
         this.filename=filename;
+    }
+
+    public SHA1(File file){
+        this.filename=file.getName();
     }
 
     /**

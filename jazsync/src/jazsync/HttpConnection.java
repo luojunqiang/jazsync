@@ -23,7 +23,6 @@ public class HttpConnection {
     private URL address;
     private String boundary;
     private long contLen;
-    private String charSet="UTF-8";
 
     public HttpConnection(String url) {
         try {
@@ -52,8 +51,7 @@ public class HttpConnection {
         } catch (MalformedURLException e) {
             failed(address.toString());
         } catch (IOException e) {
-           failed(address.toString());
-            //e.printStackTrace();
+            failed(address.toString());
         }
     }
 
@@ -63,7 +61,8 @@ public class HttpConnection {
             if(username!=null && password!=null){
                 encoding = new BASE64Encoder().encode((username+":"+password).getBytes());
                 connection.setRequestProperty("Authorization", "Basic "+encoding);
-            } else if (rangeRequest!=null){
+            }
+            if (rangeRequest!=null){
                 connection.setRequestProperty("Range", "bytes="+rangeRequest);
             }
         } catch (IOException e) {
@@ -135,20 +134,10 @@ public class HttpConnection {
                     header+=o.toString();
                     parseBoundary(key,o.toString());
                     parseLength(key,o.toString());
-                    parseCharset(key,o.toString());
                 }
                 header+="\n";
             }
         return header;
-    }
-
-    private void parseCharset(String key, String values){
-        if(key!=null && key.equals("Content-Type")==true){
-            int index=values.indexOf("charset");
-            if(index!=-1){
-                charSet=values.substring(index+"charset=".length());
-            }
-        }
     }
 
     /**
@@ -175,10 +164,6 @@ public class HttpConnection {
                 boundary=values.substring(index+"boundary=".length());
             }
         }
-    }
-
-    public void rangesParser(){
-
     }
 
     public void closeConnection(){

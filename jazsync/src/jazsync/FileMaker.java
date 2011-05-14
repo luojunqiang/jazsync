@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
+import java.math.RoundingMode;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -50,6 +51,9 @@ public class FileMaker {
     private int bufferOffset;
     private long fileOffset;
     private long[] fileMap;
+    private int numBlocks;
+    private SHA1 sha;
+    private int missing;
 
     public FileMaker(String[] args) throws MalformedURLException, NoSuchAlgorithmException, FileNotFoundException, IOException {
          mfr = new MetaFileReader(args);
@@ -58,7 +62,6 @@ public class FileMaker {
          fileMap = new long[mfr.getBlockCount()];
          Arrays.fill(fileMap, -1);
          fileOffset=0;
-         
          if(mfr.FILE_FLAG==1) {
              System.out.println("Stahneme par bloku");
              checkSimilarity();
@@ -78,13 +81,16 @@ public class FileMaker {
             http = new HttpConnection(urlParser(mfr.getMetaFileURL()));
         }
         http.openConnection();
+        if(mfr.getAuthentication()){
+            http.setAuthentication(mfr.getUsername(), mfr.getPassword());
+        }
     }
 
     private void getWholeFile() throws MalformedURLException{
         openConnection();
         http.getFile(mfr.getLength(), mfr.getFilename());
         System.out.println("Target 100.0% complete.");
-        SHA1 sha = new SHA1(mfr.getFilename());
+        sha = new SHA1(mfr.getFilename());
         if(sha.SHA1sum().equals(mfr.getSha1())){
             System.out.println("verifying download...checksum matches OK");
             System.out.println("used 0 local, fetched "+mfr.getLength());
@@ -120,10 +126,8 @@ public class FileMaker {
 
         for(int i=0;i<fileMap.length;i++){
             fileOffset = fileMap[i];
-            
-            if( fileOffset != -1){
+            if( fileOffset != -1 ){
                 rChannel.read(buffer, fileOffset);
-                System.out.println(buffer);
                 buffer.flip();
                 wChannel.write(buffer);
                 buffer.clear();
@@ -132,7 +136,7 @@ public class FileMaker {
                 range=i*mfr.getBlocksize();
                 http.setRangesRequest(new int[]{range,range+mfr.getBlocksize()-1});
                 http.sendRequest();
-                System.out.println(http.getResponseHeader());
+                http.getResponseHeader();
                 buffer.put(http.getResponseBody());
                 buffer.flip();
                 wChannel.write(buffer);
@@ -140,6 +144,26 @@ public class FileMaker {
             }
         }
         newFile.setLastModified(getMTime());
+        sha = new SHA1(newFile);
+        if(sha.SHA1sum().equals(mfr.getSha1())){
+            System.out.println("verifying download...checksum matches OK");
+            System.out.println("used "+(mfr.getLength()-(mfr.getBlocksize()*missing))+" "
+                    + "local, fetched "+(mfr.getBlocksize()*missing));
+            new File(mfr.getFilename()).renameTo(new File(mfr.getFilename()+".zs-old"));
+            newFile.renameTo(new File(mfr.getFilename()));
+            System.exit(0);
+        }
+    }
+
+    /** Misto serioveho stahovani si projedem cely fileMap, dokud nenasbirame
+     *  maximalne 20 chybejicich bloku, o ty si pozadame a budeme je drzet v pameti.
+     *  Postupne je pak budeme z pameti pri spravnych prilezitostech psat do souboru,
+     *  dokud vsechno z pameti nevypiseme. Nasledne muzeme s pruzkumem fileMap pokracovat.
+     */
+    private int[] rangeLookUp(int i){
+        int[] ranges = null;
+
+        return ranges;
     }
 
     /**
@@ -286,17 +310,18 @@ public class FileMaker {
         }
         DecimalFormat df = new DecimalFormat("#.##");
         df.setDecimalFormatSymbols(DecimalFormatSymbols.getInstance(Locale.US));
+        df.setRoundingMode(RoundingMode.DOWN);
         System.out.println();
         System.out.println("Target "+df.format(completion())+"% complete.");
         long endT = System.currentTimeMillis();
-        System.out.println("Doba mapovani souboru: "+(double)(endT-start)/1000+"s");
-        System.out.println(Arrays.toString(fileMap));
+//        System.out.println("Doba mapovani souboru: "+(double)(endT-start)/1000+"s");
+//        System.out.println(Arrays.toString(fileMap));
         is.close();     
     }
 
     /**
-     * Method is used to draw a progress bar
-     * how much we already read datas from file.
+     * Method is used to draw a progress bar of
+     * how much we already read from file.
      * @param i How much data we already read (value in percents)
      */
     private void progressBar(double i){
@@ -333,7 +358,7 @@ public class FileMaker {
      * @return How many percent of file we have already
      */
     private double completion(){
-        int missing=0;
+        missing=0;
         for(int i=0;i<fileMap.length;i++){
             if(fileMap[i]==-1){
                 missing++;

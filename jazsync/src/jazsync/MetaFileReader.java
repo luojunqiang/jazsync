@@ -43,6 +43,11 @@ public class MetaFileReader {
     private ChainingHash hashtable;
     private int fileOffset;
     private int blockNum;
+    
+    /** Authentication variables */
+    private String username;
+    private String passwd;
+    private boolean authing=false;
 
     /** Variables for header information from .zsync metafile */
     //------------------------------
@@ -56,17 +61,21 @@ public class MetaFileReader {
     private int mf_checksum_bytes;
     private String mf_url;
     private String mf_sha1;
+    private String auth;
     //------------------------------
 
 
     public MetaFileReader(String[] args) {
         Getopt g = new Getopt("jazsync", args, OPTSTRING, LONGOPTS);
         int c;
-        Socket s;
+        
         while ((c = g.getopt()) != -1) {
             switch (c) {
                 case 'A':
                     System.out.println("Hostname mode (not implemented yet)");
+                    auth=g.getOptarg();
+                    parseAuthentication();
+                    authing=true;
                     break;
                 case 'i':
                     System.out.println("Inputfile name (not implemented yet)");
@@ -118,6 +127,10 @@ public class MetaFileReader {
             } else if (filename.startsWith("http://")) {   // HTTPS ????
                 HttpConnection http = new HttpConnection(filename);
                 http.openConnection();
+                if(authing==true){
+                    http.setAuthentication(username, passwd);
+                }
+                http.sendRequest();
                 http.getResponseHeader();
                 byte[] mfBytes=http.getResponseBody();
                 http.closeConnection();
@@ -361,7 +374,12 @@ public class MetaFileReader {
             item = new Link(p);
             hashtable.insert(item);
         }
-    }  
+    }
+
+    private void parseAuthentication(){
+        username = auth.substring(auth.indexOf("=")+1, auth.indexOf(":"));
+        passwd = auth.substring(auth.indexOf(":")+1);
+    }
 
     /**
      * Prints out a help message
@@ -389,6 +407,18 @@ public class MetaFileReader {
     private void version(PrintStream out){
         out.println("Version: Jazsync v0.0.1 (jazsync)");
         out.println("by Tomáš Hlavnička <hlavntom@fel.cvut.cz>");
+    }
+
+    public boolean getAuthentication(){
+        return authing;
+    }
+
+    public String getUsername(){
+        return username;
+    }
+
+    public String getPassword(){
+        return passwd;
     }
 
     public ChainingHash getHashtable() {
