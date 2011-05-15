@@ -26,6 +26,7 @@ import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 
 import java.util.Arrays;
 import java.util.Date;
@@ -54,6 +55,7 @@ public class FileMaker {
     private int numBlocks;
     private SHA1 sha;
     private int missing;
+    private boolean rangeQueue;
 
     public FileMaker(String[] args) throws MalformedURLException, NoSuchAlgorithmException, FileNotFoundException, IOException {
          mfr = new MetaFileReader(args);
@@ -112,11 +114,13 @@ public class FileMaker {
      * @throws IOException
      */
     private void fileMaker() throws IOException {
-        int range;
+        int range=0;
         File newFile = new File(mfr.getFilename()+".part");
         if(newFile.exists()){
             newFile.delete();
         }
+        ArrayList<DataRange> d = null;
+        byte[] data = null;
         newFile.createNewFile();
         ByteBuffer buffer = ByteBuffer.allocate(mfr.getBlocksize());
         FileChannel rChannel = new FileInputStream(mfr.getFilename()).getChannel();
@@ -132,15 +136,24 @@ public class FileMaker {
                 wChannel.write(buffer);
                 buffer.clear();
             } else {
-                openConnection();
-                range=i*mfr.getBlocksize();
-                http.setRangesRequest(new int[]{range,range+mfr.getBlocksize()-1});
-                http.sendRequest();
-                http.getResponseHeader();
-                buffer.put(http.getResponseBody());
+                if(!rangeQueue){
+                    openConnection();
+                    d=rangeLookUp(i);
+                    range=d.size();
+                    http.setRangesRequest(d);
+                    http.sendRequest();
+                    System.out.println(http.getResponseHeader());
+                    data = http.getResponseBody();
+                }
+                buffer.put(data, (range-d.size())*mfr.getBlocksize(), mfr.getBlocksize());
                 buffer.flip();
                 wChannel.write(buffer);
                 buffer.clear();
+
+                d.remove(0);
+                if(d.isEmpty()){
+                    rangeQueue=false;
+                }
             }
         }
         newFile.setLastModified(getMTime());
@@ -149,8 +162,8 @@ public class FileMaker {
             System.out.println("verifying download...checksum matches OK");
             System.out.println("used "+(mfr.getLength()-(mfr.getBlocksize()*missing))+" "
                     + "local, fetched "+(mfr.getBlocksize()*missing));
-            new File(mfr.getFilename()).renameTo(new File(mfr.getFilename()+".zs-old"));
-            newFile.renameTo(new File(mfr.getFilename()));
+            //new File(mfr.getFilename()).renameTo(new File(mfr.getFilename()+".zs-old"));
+            //newFile.renameTo(new File(mfr.getFilename()));
             System.exit(0);
         }
     }
@@ -160,9 +173,20 @@ public class FileMaker {
      *  Postupne je pak budeme z pameti pri spravnych prilezitostech psat do souboru,
      *  dokud vsechno z pameti nevypiseme. Nasledne muzeme s pruzkumem fileMap pokracovat.
      */
-    private int[] rangeLookUp(int i){
-        int[] ranges = null;
-
+    private ArrayList<DataRange> rangeLookUp(int i){
+        ArrayList<DataRange> ranges = new ArrayList<DataRange>();
+        for (; i<fileMap.length; i++){
+            if(fileMap[i]==-1){
+                ranges.add(new DataRange(i*mfr.getBlocksize(),
+                       (i*mfr.getBlocksize())+mfr.getBlocksize() ));
+            }
+            if(ranges.size()==20){
+                break;
+            }
+        }
+        if(!ranges.isEmpty()){
+            rangeQueue=true;
+        }
         return ranges;
     }
 

@@ -1,27 +1,25 @@
 package jazsync;
 
-import java.io.BufferedReader;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import sun.misc.BASE64Encoder;
 
 public class HttpConnection {
     private String rangeRequest;
-    private String encoding;
     private String username;
     private String password;
     private HttpURLConnection connection;
     private URL address;
     private String boundary;
+    private byte[] boundaryBytes;
     private long contLen;
 
     public HttpConnection(String url) {
@@ -59,8 +57,9 @@ public class HttpConnection {
         try{
             connection.setRequestMethod("GET");
             if(username!=null && password!=null){
-                encoding = new BASE64Encoder().encode((username+":"+password).getBytes());
-                connection.setRequestProperty("Authorization", "Basic "+encoding);
+                String encoding = Base64Coder.encodeLines((username+":"+password).getBytes());
+                connection.setRequestProperty("Authorization", 
+                        "Basic "+encoding.substring(0, encoding.length()-1));
             }
             if (rangeRequest!=null){
                 connection.setRequestProperty("Range", "bytes="+rangeRequest);
@@ -71,18 +70,17 @@ public class HttpConnection {
     }
 
     /**
-     *
-     * @param ranges Array of integers one by one symbolizing start/end
-     * of every byte range
+     * Method used to initialize range for http request
+     * @param ranges ArrayList of DataRange objects containing block ranges
      */
-    public void setRangesRequest(int[] ranges){
-        String var="";
-        for(int i=0;i<ranges.length-1;i++){
-            var+=String.valueOf(ranges[i])+"-"+String.valueOf(ranges[i+1]);
-            var+=",";
-            i++;
+    public void setRangesRequest(ArrayList<DataRange> ranges){
+        StringBuilder sb = new StringBuilder();
+        for(DataRange d : ranges){
+            sb.append(d.getRange()).append(",");
         }
-        rangeRequest=var.substring(0, var.length()-1);
+        sb.delete(sb.length()-1,sb.length());
+        System.out.println(sb.toString());
+        rangeRequest=sb.toString();
     }
 
     /**
@@ -95,15 +93,36 @@ public class HttpConnection {
         this.password=password;
     }
 
+    private boolean compareBytes(byte[] src, int srcOff, byte[] bound){
+        int j = srcOff;
+        for(int i=0; i<bound.length; i++){
+            if(src[j]!=bound[i]){
+                return false;
+            }
+            j++;
+        }
+        return true;
+    }
+
     public byte[] getResponseBody(){
         byte[] bytes = new byte[(int)contLen];
         try {
             InputStream in = connection.getInputStream();
             for (int i = 0; i < bytes.length; i++) {
                 bytes[i]=(byte)in.read();
+                System.out.print((char)(bytes[i]));//+" ");
+
             }
         } catch (IOException e) {
             failed(address.toString());
+        }
+        byte[] rangeBytes = new byte[(int)contLen];
+        for(int i = 0; i <bytes.length;i++){
+            if(bytes[i]==45 && bytes[i+1]==45){
+                if(compareBytes(bytes, i+2, boundaryBytes)){
+
+                }
+            }
         }
         return bytes;
     }
@@ -162,6 +181,7 @@ public class HttpConnection {
             int index=values.indexOf("boundary");
             if(index!=-1){
                 boundary=values.substring(index+"boundary=".length());
+                boundaryBytes=boundary.getBytes();
             }
         }
     }

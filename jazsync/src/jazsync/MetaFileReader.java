@@ -72,7 +72,6 @@ public class MetaFileReader {
         while ((c = g.getopt()) != -1) {
             switch (c) {
                 case 'A':
-                    System.out.println("Hostname mode (not implemented yet)");
                     auth=g.getOptarg();
                     parseAuthentication();
                     authing=true;
