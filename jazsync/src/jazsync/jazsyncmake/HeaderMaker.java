@@ -1,9 +1,10 @@
-package jazsync;
+package jazsync.jazsyncmake;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import jazsync.jazsync.SHA1;
 
 public class HeaderMaker {
 /*
@@ -32,7 +33,7 @@ SHA-1: 5944ec77b9b0f2d6b8212d142970117f5801430a
     private String ZMAP2="Z-Map2: ";
     private SHA1 sha1;
 
-    private int blocksize=2048;
+    private int blocksize;
     private String filename;
     private long length;
     private String url;

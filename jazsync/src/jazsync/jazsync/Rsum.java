@@ -1,4 +1,4 @@
-package jazsync;
+package jazsync.jazsync;
 
 import org.metastatic.rsync.RollingChecksum;
 

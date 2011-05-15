@@ -13,7 +13,7 @@
 // Please contact the author if you need another license.
 // This module is provided "as is", without warranties of any kind.
 
-package jazsync;
+package org.base64coder;
 
 /**
 * A Base64 encoder/decoder.

@@ -1,4 +1,4 @@
-package jazsync;
+package jazsync.jazsync;
 
 import java.io.IOException;
 import java.util.Arrays;

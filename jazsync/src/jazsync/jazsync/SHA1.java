@@ -1,4 +1,4 @@
-package jazsync;
+package jazsync.jazsync;
 
 import java.io.File;
 import java.io.FileInputStream;

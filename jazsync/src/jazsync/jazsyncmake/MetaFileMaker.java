@@ -1,4 +1,4 @@
-package jazsync;
+package jazsync.jazsyncmake;
 
 import gnu.getopt.Getopt;
 import gnu.getopt.LongOpt;
@@ -13,6 +13,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.Security;
 import java.util.ArrayList;
 import java.util.List;
+import jazsync.jazsync.Rsum;
 import org.metastatic.rsync.ChecksumPair;
 import org.metastatic.rsync.Configuration;
 import org.metastatic.rsync.Generator;

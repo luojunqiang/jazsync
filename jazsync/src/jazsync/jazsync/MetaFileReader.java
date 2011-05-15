@@ -1,20 +1,17 @@
-package jazsync;
+package jazsync.jazsync;
 
 import gnu.getopt.Getopt;
 import gnu.getopt.LongOpt;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.io.StringReader;
 import java.net.MalformedURLException;
-import java.net.Socket;
 import java.net.URL;
-import java.util.Arrays;
 import org.metastatic.rsync.ChecksumPair;
 
 public class MetaFileReader {
@@ -131,7 +128,7 @@ public class MetaFileReader {
                 }
                 http.sendRequest();
                 http.getResponseHeader();
-                byte[] mfBytes=http.getResponseBody();
+                byte[] mfBytes=http.getResponseBody(0);
                 http.closeConnection();
                 readMetaFile(convertBytesToString(mfBytes));
                 blockNum = Math.round((float)mf_length / (float)mf_blocksize);

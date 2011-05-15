@@ -1,4 +1,4 @@
-package jazsync;
+package jazsync.jazsyncmake;
 
 public class jazsyncmake {
 

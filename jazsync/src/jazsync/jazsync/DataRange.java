@@ -1,4 +1,4 @@
-package jazsync;
+package jazsync.jazsync;
 
 public class DataRange {
     private long start;
@@ -10,7 +10,8 @@ public class DataRange {
     }
 
     /**
-     * Returns range in String format ("start-end")
+     * Returns range in String format ("start-end"), ready to be put into
+     * HTTP range request
      * @return Range of data in stream
      */
     public String getRange(){
@@ -18,7 +19,7 @@ public class DataRange {
     }
 
     /**
-     * Returns offset where block starts
+     * Returns offset where block starts in the final file
      * @return Offset where block starts
      */
     public long getOffset(){

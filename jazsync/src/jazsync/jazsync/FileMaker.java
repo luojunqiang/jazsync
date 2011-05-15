@@ -1,21 +1,16 @@
-package jazsync;
+package jazsync.jazsync;
 
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.RandomAccessFile;
 import java.math.RoundingMode;
 
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.ByteBuffer;
-import java.nio.IntBuffer;
-import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 
 import java.security.MessageDigest;
@@ -114,12 +109,14 @@ public class FileMaker {
      * @throws IOException
      */
     private void fileMaker() throws IOException {
+        long start=System.currentTimeMillis();
         int range=0;
+        int blockLength=0;
         File newFile = new File(mfr.getFilename()+".part");
         if(newFile.exists()){
             newFile.delete();
         }
-        ArrayList<DataRange> d = null;
+        ArrayList<DataRange> rangeList = null;
         byte[] data = null;
         newFile.createNewFile();
         ByteBuffer buffer = ByteBuffer.allocate(mfr.getBlocksize());
@@ -137,21 +134,27 @@ public class FileMaker {
                 buffer.clear();
             } else {
                 if(!rangeQueue){
+                    rangeList=rangeLookUp(i);
+                    range=rangeList.size();
                     openConnection();
-                    d=rangeLookUp(i);
-                    range=d.size();
-                    http.setRangesRequest(d);
+                    http.setRangesRequest(rangeList);
                     http.sendRequest();
-                    System.out.println(http.getResponseHeader());
-                    data = http.getResponseBody();
+                    http.getResponseHeader();
+                    data = http.getResponseBody(mfr.getBlocksize());
                 }
-                buffer.put(data, (range-d.size())*mfr.getBlocksize(), mfr.getBlocksize());
+                if((i*mfr.getBlocksize()+mfr.getBlocksize())<mfr.getLength()){
+                    blockLength = mfr.getBlocksize();
+                } else {
+                    blockLength = (int) ((int) (mfr.getBlocksize()) 
+                            + (mfr.getLength()
+                            - (i * mfr.getBlocksize() + mfr.getBlocksize())));
+                }
+                buffer.put(data, (range-rangeList.size())*mfr.getBlocksize(), blockLength);
                 buffer.flip();
                 wChannel.write(buffer);
                 buffer.clear();
-
-                d.remove(0);
-                if(d.isEmpty()){
+                rangeList.remove(0);
+                if(rangeList.isEmpty()){
                     rangeQueue=false;
                 }
             }
@@ -164,6 +167,8 @@ public class FileMaker {
                     + "local, fetched "+(mfr.getBlocksize()*missing));
             //new File(mfr.getFilename()).renameTo(new File(mfr.getFilename()+".zs-old"));
             //newFile.renameTo(new File(mfr.getFilename()));
+            long end=System.currentTimeMillis();
+            System.out.println("Doba tvorby souboru: "+(double)(end-start)/1000+"s");
             System.exit(0);
         }
     }
@@ -180,7 +185,7 @@ public class FileMaker {
                 ranges.add(new DataRange(i*mfr.getBlocksize(),
                        (i*mfr.getBlocksize())+mfr.getBlocksize() ));
             }
-            if(ranges.size()==20){
+            if(ranges.size()==100){
                 break;
             }
         }
@@ -254,7 +259,7 @@ public class FileMaker {
         while (true) {
             n=is.read(fileBuffer,0,len);
             /** Inicializujeme rolling checksum tim, ze spocteme kontrolni soucet
-             *  v prvni offsetu
+             *  v prvnim offsetu
              */
             if(firstBlock){
                 weakSum = gen.generateWeakSum(fileBuffer, 0);

@@ -1,5 +1,6 @@
-package jazsync;
+package jazsync.jazsync;
 
+import org.base64coder.Base64Coder;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -7,7 +8,6 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -70,7 +70,7 @@ public class HttpConnection {
     }
 
     /**
-     * Method used to initialize range for http request
+     * Method used to initialize ranges for http request
      * @param ranges ArrayList of DataRange objects containing block ranges
      */
     public void setRangesRequest(ArrayList<DataRange> ranges){
@@ -79,7 +79,6 @@ public class HttpConnection {
             sb.append(d.getRange()).append(",");
         }
         sb.delete(sb.length()-1,sb.length());
-        System.out.println(sb.toString());
         rangeRequest=sb.toString();
     }
 
@@ -104,26 +103,56 @@ public class HttpConnection {
         return true;
     }
 
-    public byte[] getResponseBody(){
+    private int dataBegin(byte[] src, int i){
+        int newLine=0;
+        int offset=i;
+        for(;offset<src.length;offset++){
+            if(src[offset]==13 && src[offset+1]==10){
+                newLine++;
+                if(newLine==4){
+                    offset+=2;
+                    break;
+                }
+            }
+        }
+        return offset;
+    }
+
+    public byte[] getResponseBody(int blockLength){
         byte[] bytes = new byte[(int)contLen];
         try {
             InputStream in = connection.getInputStream();
             for (int i = 0; i < bytes.length; i++) {
                 bytes[i]=(byte)in.read();
-                System.out.print((char)(bytes[i]));//+" ");
-
             }
         } catch (IOException e) {
             failed(address.toString());
         }
-        byte[] rangeBytes = new byte[(int)contLen];
-        for(int i = 0; i <bytes.length;i++){
-            if(bytes[i]==45 && bytes[i+1]==45){
-                if(compareBytes(bytes, i+2, boundaryBytes)){
 
+        if(boundary!=null){
+            int range=0;
+            byte[] rangeBytes = new byte[(int)contLen];
+                for(int i = 0; i <bytes.length;i++){
+                    //jestlize jsou ve streamu "--"
+                    if(bytes[i]==45 && bytes[i+1]==45){
+                        //zkontrolujeme jestli za "--" je boundary hodnota
+                        if(compareBytes(bytes, i+2, boundaryBytes)){
+                            i+=2+boundaryBytes.length; //presuneme se za boundary
+                            /* pokud je za boundary dalsi "--" jde o konec streamu
+                             * v opacnem pripade si data zkopirujeme
+                             */
+                            if(bytes[i]!=45 && bytes[i+1]!=45){
+                                System.arraycopy(bytes, dataBegin(bytes,i), rangeBytes, range, blockLength);
+                                range+=blockLength;
+                            }
+                        }
+                    }
                 }
-            }
+            byte[] ranges = new byte[range];
+            System.arraycopy(rangeBytes, 0, ranges, 0, ranges.length);
+            return ranges;
         }
+        
         return bytes;
     }
 
