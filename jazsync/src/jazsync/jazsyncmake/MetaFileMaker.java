@@ -14,10 +14,10 @@ import java.security.Security;
 import java.util.ArrayList;
 import java.util.List;
 import jazsync.jazsync.Rsum;
-import org.metastatic.rsync.ChecksumPair;
-import org.metastatic.rsync.Configuration;
-import org.metastatic.rsync.Generator;
-import org.metastatic.rsync.JarsyncProvider;
+import org.jarsync.ChecksumPair;
+import org.jarsync.Configuration;
+import org.jarsync.Generator;
+import org.jarsync.JarsyncProvider;
 
 public class MetaFileMaker {
     

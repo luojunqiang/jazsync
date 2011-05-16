@@ -1,6 +1,6 @@
 package jazsync.jazsync;
 
-import org.metastatic.rsync.RollingChecksum;
+import org.jarsync.RollingChecksum;
 
 public class Rsum implements RollingChecksum, Cloneable, java.io.Serializable {
     private short a;

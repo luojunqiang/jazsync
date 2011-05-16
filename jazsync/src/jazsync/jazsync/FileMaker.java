@@ -27,10 +27,10 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.Locale;
 
-import org.metastatic.rsync.ChecksumPair;
-import org.metastatic.rsync.Configuration;
-import org.metastatic.rsync.Generator;
-import org.metastatic.rsync.JarsyncProvider;
+import org.jarsync.ChecksumPair;
+import org.jarsync.Configuration;
+import org.jarsync.Generator;
+import org.jarsync.JarsyncProvider;
 
 public class FileMaker {
 

@@ -2,7 +2,7 @@ package jazsync.jazsync;
 
 import java.io.IOException;
 import java.util.Arrays;
-import org.metastatic.rsync.ChecksumPair;
+import org.jarsync.ChecksumPair;
 
 /**
  *

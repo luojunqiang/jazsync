@@ -12,7 +12,7 @@ import java.io.PrintStream;
 import java.io.StringReader;
 import java.net.MalformedURLException;
 import java.net.URL;
-import org.metastatic.rsync.ChecksumPair;
+import org.jarsync.ChecksumPair;
 
 public class MetaFileReader {
     
