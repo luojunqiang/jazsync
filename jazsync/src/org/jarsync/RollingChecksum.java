@@ -77,13 +77,6 @@ public interface RollingChecksum extends Cloneable, java.io.Serializable {
    void roll(byte b);
 
    /**
-    * Update the checksum by simply "trimming" the
-    * least-recently-updated byte from the internal state. Most, but not
-    * all, checksums can support this.
-    */
-   void trim();
-
-   /**
     * Replaces the current internal state with entirely new data.
     *
     * @param buf    The bytes to checksum.
@@ -91,6 +84,16 @@ public interface RollingChecksum extends Cloneable, java.io.Serializable {
     * @param length The number of bytes to update.
     */
    void check(byte[] buf, int offset, int length);
+
+   /**
+    * Replaces the current internal state with entirely new data.
+    * This method is only used to initialize rolling checksum.
+    *
+    * @param buf    The bytes to checksum.
+    * @param offset The offset into <code>buf</code> to start reading.
+    * @param length The number of bytes to update.
+    */
+   void first(byte[] buf, int offset, int length);
 
    /**
     * Copies this checksum instance into a new instance. This method
@@ -112,5 +115,4 @@ public interface RollingChecksum extends Cloneable, java.io.Serializable {
     */
    boolean equals(Object o);
 
-   void first(byte[] buf, int offset, int blockLength);
 }

@@ -2,6 +2,10 @@ package jazsync.jazsync;
 
 import org.jarsync.RollingChecksum;
 
+/**
+ * Implementation of rolling checksum for zsync purposes
+ * @author Tomáš Hlavnička
+ */
 public class Rsum implements RollingChecksum, Cloneable, java.io.Serializable {
     private short a;
     private short b;
@@ -56,10 +60,6 @@ public class Rsum implements RollingChecksum, Cloneable, java.io.Serializable {
         }
     }
 
-    @Override
-    public void trim() {
-    }
-
     /**
      * Update the checksum with an entirely different block, and
      * potentially a different block length.
@@ -77,6 +77,8 @@ public class Rsum implements RollingChecksum, Cloneable, java.io.Serializable {
             b+=i*unsignedByte(buf[index]);
             index++;
         }
+        System.out.println("a: "+a);
+        System.out.println("b: "+b);
     }
 
     /**
@@ -103,10 +105,10 @@ public class Rsum implements RollingChecksum, Cloneable, java.io.Serializable {
     }
 
     /**
-     * Returns unsigned byte
+     * Returns "unsigned" value of byte
      *
      * @param b Byte to convert
-     * @return Unsigned byte
+     * @return Unsigned value of byte <code>b</code>
      */
     private int unsignedByte(byte b){
         if(b<0) return b+256;

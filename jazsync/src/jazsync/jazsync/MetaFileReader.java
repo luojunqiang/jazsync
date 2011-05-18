@@ -13,7 +13,12 @@ import java.io.StringReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import org.jarsync.ChecksumPair;
+import org.jarsync.Util;
 
+/**
+ * Class used to read metafile
+ * @author Tomáš Hlavnička
+ */
 public class MetaFileReader {
     
     /** File existency and completion flag */
@@ -62,6 +67,10 @@ public class MetaFileReader {
     //------------------------------
 
 
+    /**
+     * Metafile constructor
+     * @param args Arguments
+     */
     public MetaFileReader(String[] args) {
         Getopt g = new Getopt("jazsync", args, OPTSTRING, LONGOPTS);
         int c;
@@ -148,6 +157,9 @@ public class MetaFileReader {
 
 
 
+    /**
+     * Method used to checking outputfile if exist and is(not) complete
+     */
     private void checkOutputFile(){
         File file = new File(mf_filename);
         if(file.isFile()){
@@ -334,12 +346,12 @@ public class MetaFileReader {
         int seq=0;
         int off=fileOffset;
 
-        byte[] weak=new byte[mf_rsum_bytes];
+        byte[] weak=new byte[4];
         byte[] strongSum=new byte[mf_checksum_bytes];
 
         while(seq < blockNum){
 
-            for(int w=0;w<weak.length;w++){
+            for(int w=0;w<mf_rsum_bytes;w++){
                 weak[w]=checksums[off];
                 off++;
             }
@@ -349,20 +361,12 @@ public class MetaFileReader {
                 off++;
             }
 
-            //potreba predelat pro variabilni delku weakSum
             //*********************************************
-            if(weak.length<4){
-                System.out.println("Hash-length optimalizations are not "
-                        + "implemented yet, length of weak "
-                        + "checksums needs to be 4 bytes.");
-                System.exit(1);
-            }
-            
             weakSum=0;
             weakSum+=(weak[2] & 0x000000FF) << 24;
             weakSum+=(weak[3] & 0x000000FF) << 16;
             weakSum+=(weak[0] & 0x000000FF) << 8;
-            weakSum+=(weak[1] & 0x000000FF);
+            weakSum+=(weak[1] & 0x000000FF);       
             //*********************************************
             p = new ChecksumPair(weakSum,strongSum.clone(),offset,mf_blocksize,seq);
             offset+=mf_blocksize;
@@ -370,8 +374,12 @@ public class MetaFileReader {
             item = new Link(p);
             hashtable.insert(item);
         }
+        hashtable.displayTable();
     }
 
+    /**
+     * Method used to parsing authentication information (user:pass)
+     */
     private void parseAuthentication(){
         username = auth.substring(auth.indexOf("=")+1, auth.indexOf(":"));
         passwd = auth.substring(auth.indexOf(":")+1);
@@ -405,68 +413,126 @@ public class MetaFileReader {
         out.println("by Tomáš Hlavnička <hlavntom@fel.cvut.cz>");
     }
 
+    /**
+     * Returns value indicating whetever the authentication is neccessary
+     * @return Boolean value 
+     */
     public boolean getAuthentication(){
         return authing;
     }
 
+    /**
+     * Authentication username
+     * @return Username used for authentication
+     */
     public String getUsername(){
         return username;
     }
 
+    /**
+     * Authentication password
+     * @return Password used for authentication
+     */
     public String getPassword(){
         return passwd;
     }
 
+    /**
+     * Returns hash table cotaining block checksums
+     * @return Hash table
+     */
     public ChainingHash getHashtable() {
         return hashtable;
     }
 
+    /**
+     * Returns number of blocks in complete file
+     * @return Number of blocks
+     */
     public int getBlockCount(){
         return blockNum;
     }
 
+    /**
+     * Returns metafile URL
+     * @return Metafile URL
+     * @throws MalformedURLException
+     */
     public URL getMetaFileURL() throws MalformedURLException{
         return new URL(filename);
     }
 
+    /**
+     * Returns size of block
+     * @return Size of the data block
+     */
     public int getBlocksize() {
         return mf_blocksize;
     }
 
+    /**
+     * Length of used strong sum
+     * @return Length of strong sum
+     */
     public int getChecksumBytes() {
         return mf_checksum_bytes;
     }
 
+    /**
+     * Returns name of the file that we are trying to synchronize
+     * @return Name of the file
+     */
     public String getFilename() {
         return mf_filename;
     }
 
+    /**
+     * Returns length of complete file
+     * @return Length of the file
+     */
     public long getLength() {
         return mf_length;
     }
 
+    /**
+     * Last modified time of file stored in metafile stored
+     * in string format ("EEE, dd MMM yyyy HH:mm:ss Z")
+     * @return String form of mtime
+     */
     public String getMtime() {
         return mf_mtime;
     }
 
+    /**
+     * Length of used weak sum
+     * @return Length of weak sum
+     */
     public int getRsumBytes() {
         return mf_rsum_bytes;
     }
 
+    /**
+     * Number of consequence blocks
+     * @return Number of consequence blocks
+     */
     public int getSeqNum() {
         return mf_seq_num;
     }
 
+    /**
+     * Returns SHA1sum of complete file
+     * @return String containing SHA1 sum of complete file
+     */
     public String getSha1() {
         return mf_sha1;
     }
 
+    /**
+     * Return URL of complete file
+     * @return URL address
+     */
     public String getUrl() {
         return mf_url;
-    }
-
-    public String getVersion() {
-        return mf_version;
     }
 
 }

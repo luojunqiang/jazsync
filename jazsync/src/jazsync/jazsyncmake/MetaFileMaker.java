@@ -2,22 +2,29 @@ package jazsync.jazsyncmake;
 
 import gnu.getopt.Getopt;
 import gnu.getopt.LongOpt;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintStream;
+
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.Security;
+
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+
 import jazsync.jazsync.Rsum;
+
 import org.jarsync.ChecksumPair;
 import org.jarsync.Configuration;
 import org.jarsync.Generator;
 import org.jarsync.JarsyncProvider;
+import org.jarsync.Util;
 
 public class MetaFileMaker {
     
@@ -43,13 +50,21 @@ public class MetaFileMaker {
 
     private String url;
     private int blocksize;
-    private int strongSumLength;
+    
     private String filename;
     private File file;
     private String outputfile;
     private boolean noURL=true;
     private boolean newNameFile=false;
     private String header;
+
+    /* index 0 - seq_matches
+     * index 1 - weakSum length
+     * index 2 - strongSum length
+     */
+
+    private int[] hashLengths = new int[3];
+    private long fileLength;
     
     
     public MetaFileMaker(String[] args) {
@@ -57,7 +72,7 @@ public class MetaFileMaker {
         blocksize=BLOCK_SIZE;
         
         //nutne optimalizace ke zmene delky kontrolnich souctu
-        strongSumLength=STRONG_SUM_LENGTH; 
+        hashLengths[2]=STRONG_SUM_LENGTH;
 
         Getopt g = new Getopt("jazsyncmake", args, OPTSTRING, LONGOPTS);
         int c;
@@ -109,6 +124,7 @@ public class MetaFileMaker {
                 System.out.println("Open: No such file");
                 System.exit(1);
             }
+            fileLength=file.length();
             if(!newNameFile){
                 outputfile=file.getName()+".zsync";
             }
@@ -118,12 +134,13 @@ public class MetaFileMaker {
         }
 
         /**
-         * zde by mela probehnout analyza velikosti souboru v pomeru k blocksize
-         * a nasledny vypocet hash-lengths
+         * zde provedeme analyzu souboru a podle toho urcime velikost hash length
+         * a pocet navazujicich bloku
          */
+        analyzeFile();
 
         //creating header and saving it into the created metafile
-        HeaderMaker hm=new HeaderMaker(file,filename,url,blocksize,strongSumLength);
+        HeaderMaker hm=new HeaderMaker(file,filename,url,blocksize,hashLengths);
         header=hm.getFullHeader();
         try {
             BufferedWriter out = new BufferedWriter(new FileWriter(outputfile));
@@ -142,14 +159,13 @@ public class MetaFileMaker {
             config.strongSum = MessageDigest.getInstance("MD4");
             config.weakSum = new Rsum();
             config.blockLength = blocksize;
-            config.strongSumLength = strongSumLength;
+            config.strongSumLength = hashLengths[2];
             Generator gen = new Generator(config);
             List<ChecksumPair> list = new ArrayList<ChecksumPair>(Math.round((float)file.length() / (float)blocksize));
             list = gen.generateSums(file);
             for(ChecksumPair p : list){
-                fos.write(intToBytes(p.getWeak()));
+                fos.write(intToBytes(p.getWeak(),hashLengths[1]));
                 fos.write(p.getStrong());
-                //System.out.println(p.toString());
             }
         } catch (IOException ioe){
             System.out.println("IO problem in metafile checksums writing");
@@ -165,18 +181,53 @@ public class MetaFileMaker {
         }
     }
 
+    private void analyzeFile(){
+        hashLengths[0] = fileLength > blocksize ? 2 : 1;
+        hashLengths[1] = (int) Math.ceil(((Math.log(fileLength)
+                + Math.log(blocksize)) / Math.log(2) - 8.6) / hashLengths[0] / 8);
+
+        /* min and max lengths of rsums to store */
+        if (hashLengths[1] > 4) hashLengths[1] = 4;
+        if (hashLengths[1] < 2) hashLengths[1] = 2;
+
+        /* Now the checksum length; min of two calculations */
+        hashLengths[2] = (int) Math.ceil(
+                (20 + (Math.log(fileLength) + Math.log(1 + fileLength / blocksize)) / Math.log(2))
+                / hashLengths[0] / 8);
+
+        int strongSumLength2 =
+            (int) ((7.9 + (20 + Math.log(1 + fileLength / blocksize) / Math.log(2))) / 8);
+        if (hashLengths[2] < strongSumLength2)
+            hashLengths[2] = strongSumLength2;
+
+    }
+
     /**
      * Converting integer weakSum into byte array that zsync can read
-     * (hton byte order)
+     * (htons byte order)
      * @param number weakSum in integer form
-     * @return converted byte array readable by zsync (hton byte order)
+     * @return converted to byte array compatible with zsync (htons byte order)
      */
-    private byte[] intToBytes(int number){
-        return new byte[] {
-            (byte)((number << 16) >> 24), //[2]
-            (byte)((number << 24) >> 24), //[3]
-            (byte)( number >> 24),        //[0]
-            (byte)((number << 8) >> 24)}; //[1]
+    private byte[] intToBytes(int number, int rsum_bytes){
+        byte[] rsum = new byte[rsum_bytes];
+        switch (rsum_bytes){
+            case 2:
+                rsum = new byte[]{(byte)( number >> 24),        //[0]
+                                  (byte)((number << 8) >> 24)}; //[1]
+                break;
+            case 3:
+                rsum = new byte[]{(byte)((number << 24) >> 24), //[3]
+                                  (byte)( number >> 24),        //[0]
+                                  (byte)((number << 8) >> 24)}; //[1]
+                break;
+            case 4:
+                rsum = new byte[]{(byte)((number << 16) >> 24), //[2]
+                                  (byte)((number << 24) >> 24), //[3]
+                                  (byte)( number >> 24),        //[0]
+                                  (byte)((number << 8) >> 24)}; //[1]
+                break;
+        }
+        return rsum;
     }
 
     /**

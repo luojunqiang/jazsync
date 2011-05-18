@@ -42,7 +42,7 @@ SHA-1: 5944ec77b9b0f2d6b8212d142970117f5801430a
     private int checksum_bytes=16;
     private long mtime=0;
 
-    public HeaderMaker(File file, String filename, String url, int blocksize, int checksum_bytes){
+    public HeaderMaker(File file, String filename, String url, int blocksize, int[] hashLengths){
         Version+="jazsync";
         this.mtime=file.lastModified();
         if(filename==null){
@@ -74,8 +74,10 @@ SHA-1: 5944ec77b9b0f2d6b8212d142970117f5801430a
             System.out.println("Blocksize must be a power of 2 (512, 1024, 2048, ...)");
             System.exit(1);
         }
-        
-        this.checksum_bytes=checksum_bytes;
+
+        this.seq_num=hashLengths[0];
+        this.rsum_bytes=hashLengths[1];
+        this.checksum_bytes=hashLengths[2];
         HashLengths+=(this.seq_num+","+this.rsum_bytes+","+this.checksum_bytes);
         sha1 = new SHA1(file.toString());
         SHA1+=sha1.SHA1sum();

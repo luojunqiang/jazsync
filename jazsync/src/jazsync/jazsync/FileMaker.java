@@ -6,10 +6,12 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+
 import java.math.RoundingMode;
 
 import java.net.MalformedURLException;
 import java.net.URL;
+
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
@@ -21,8 +23,8 @@ import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.Locale;
@@ -31,15 +33,10 @@ import org.jarsync.ChecksumPair;
 import org.jarsync.Configuration;
 import org.jarsync.Generator;
 import org.jarsync.JarsyncProvider;
+import org.jarsync.Util;
 
 public class FileMaker {
 
-    /*
-     * file URL - pokud je URL absolutni neni co resit
-     * pokud je relativni, tak je to http://hostnameMetafile/file
-     * pokud mame metafile na disku, a url je relativni je potreba dodat -u URL
-     * pri spousteni jazsync (odkazuje pouze na hostname)
-     */
     private MetaFileReader mfr;
     private HttpConnection http;
     private ChainingHash hashtable;
@@ -47,7 +44,6 @@ public class FileMaker {
     private int bufferOffset;
     private long fileOffset;
     private long[] fileMap;
-    private int numBlocks;
     private SHA1 sha;
     private int missing;
     private boolean rangeQueue;
@@ -55,7 +51,6 @@ public class FileMaker {
     public FileMaker(String[] args) throws MalformedURLException, NoSuchAlgorithmException, FileNotFoundException, IOException {
          mfr = new MetaFileReader(args);
          hashtable = mfr.getHashtable();
-         //hashtable.displayTable();
          fileMap = new long[mfr.getBlockCount()];
          Arrays.fill(fileMap, -1);
          fileOffset=0;
@@ -67,6 +62,8 @@ public class FileMaker {
              getWholeFile();
          } else {
              System.out.println("Problem?");
+             checkSimilarity();
+             fileMaker();
          }
          
     }
@@ -265,9 +262,9 @@ public class FileMaker {
                 weakSum = gen.generateWeakSum(fileBuffer, 0);
                 bufferOffset=mfr.getBlocksize();
                 //System.out.println("0. "+weakSum);
-                if(hashLookUp(weakSum, null)){
+                if(hashLookUp(updateWeakSum(weakSum), null)){
                     strongSum = gen.generateStrongSum(fileBuffer, 0, mfr.getBlocksize());
-                    hashLookUp(weakSum, strongSum);
+                    hashLookUp(updateWeakSum(weakSum), strongSum);
                 }
                 fileOffset++;
                 firstBlock=false;
@@ -289,7 +286,7 @@ public class FileMaker {
                  * rolling checksumu, zacneme pocitat i silny (MD4) checksum,
                  * abychom se ujistili, ze neslo pouze o kolizi.
                  */
-                if(hashLookUp(weakSum, null)){
+                if(hashLookUp(updateWeakSum(weakSum), null)){
                     if(fileOffset+mfr.getBlocksize()>fileLength){
                         if(n>0){
                             Arrays.fill(fileBuffer, n, fileBuffer.length, (byte)0);
@@ -311,12 +308,12 @@ public class FileMaker {
                         }
                         strongSum = gen.generateStrongSum(blockBuffer,
                                 0, mfr.getBlocksize() );
-                        hashLookUp(weakSum, strongSum);
+                        hashLookUp(updateWeakSum(weakSum), strongSum);
                     } else {
                         strongSum = gen.generateStrongSum(fileBuffer,
                                 bufferOffset-mfr.getBlocksize()+1,
                                 mfr.getBlocksize() );
-                        hashLookUp(weakSum, strongSum);
+                        hashLookUp(updateWeakSum(weakSum), strongSum);
                     }
                 }
 
@@ -346,6 +343,26 @@ public class FileMaker {
 //        System.out.println("Doba mapovani souboru: "+(double)(endT-start)/1000+"s");
 //        System.out.println(Arrays.toString(fileMap));
         is.close();     
+    }
+
+    private int updateWeakSum(int weak){
+        byte[] rsum = new byte[]{(byte)0,
+                                  (byte)0,
+                                  (byte)( weak >> 24),
+                                  (byte)((weak << 8) >> 24)};
+        switch(mfr.getRsumBytes()){
+            case 4:
+                rsum[0]=(byte)((weak << 16) >> 24);
+            case 3:
+                rsum[1]=(byte)((weak << 24) >> 24);
+            default:
+        }
+        int weakSum=0;
+        weakSum+=(rsum[0] & 0x000000FF) << 24;
+        weakSum+=(rsum[1] & 0x000000FF) << 16;
+        weakSum+=(rsum[2] & 0x000000FF) << 8;
+        weakSum+=(rsum[3] & 0x000000FF);
+        return weakSum;
     }
 
     /**
