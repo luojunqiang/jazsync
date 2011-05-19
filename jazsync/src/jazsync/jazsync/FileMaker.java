@@ -1,3 +1,28 @@
+/* FileMaker.java
+
+   FileMaker: File reading and making class
+   Copyright (C) 2011 Tomas Hlavnicka <hlavntom@fel.cvut.cz>
+
+   This file is a part of Jazsync.
+
+   Jazsync is free software; you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published by the
+   Free Software Foundation; either version 2 of the License, or (at
+   your option) any later version.
+
+   Jazsync is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with Jazsync; if not, write to the
+
+      Free Software Foundation, Inc.,
+      59 Temple Place, Suite 330,
+      Boston, MA  02111-1307
+      USA
+ */
 package jazsync.jazsync;
 
 import java.io.File;
@@ -28,12 +53,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.Locale;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.jarsync.ChecksumPair;
 import org.jarsync.Configuration;
 import org.jarsync.Generator;
 import org.jarsync.JarsyncProvider;
-import org.jarsync.Util;
 
 public class FileMaker {
 
@@ -48,15 +74,19 @@ public class FileMaker {
     private int missing;
     private boolean rangeQueue;
     private double complete;
+    private String inputFileName;
 
-    public FileMaker(String[] args) throws MalformedURLException, NoSuchAlgorithmException, FileNotFoundException, IOException {
+    public FileMaker(String[] args) {
          mfr = new MetaFileReader(args);
          hashtable = mfr.getHashtable();
          fileMap = new long[mfr.getBlockCount()];
          Arrays.fill(fileMap, -1);
          fileOffset=0;
+         inputFileName=mfr.getInputFile();
+         if(inputFileName==null){
+             inputFileName=mfr.getFilename();
+         }
          if(mfr.FILE_FLAG==1) {
-             System.out.println("Stahneme par bloku");
              checkSimilarity();
              if(complete>0){
                 fileMaker();
@@ -66,18 +96,22 @@ public class FileMaker {
          } else if (mfr.FILE_FLAG==-1) {
              getWholeFile();
          } else {
-             System.out.println("Problem?");
-             checkSimilarity();
-             fileMaker();
+             System.out.println("");
+             System.exit(1);
          }
          
     }
 
-    private void openConnection() throws MalformedURLException{
+    private void openConnection(){
         if(mfr.getUrl().startsWith("http://")){     //absolute URL path to file
             http = new HttpConnection(mfr.getUrl());
         } else {                                    //relative URL path to file
-            http = new HttpConnection(urlParser(mfr.getMetaFileURL()));
+            try {
+                //relative URL path to file
+                http = new HttpConnection(urlParser(mfr.getMetaFileURL()));
+            } catch (MalformedURLException ex) {
+                System.out.println("URL in malformed format");
+            }
         }
         http.openConnection();
         if(mfr.getAuthentication()){
@@ -85,7 +119,7 @@ public class FileMaker {
         }
     }
 
-    private void getWholeFile() throws MalformedURLException{
+    private void getWholeFile(){
         openConnection();
         http.getFile(mfr.getLength(), mfr.getFilename());
         System.out.println("Target 100.0% complete.");
@@ -110,68 +144,76 @@ public class FileMaker {
      *
      * @throws IOException
      */
-    private void fileMaker() throws IOException {
-        long start=System.currentTimeMillis();
-        int range=0;
-        int blockLength=0;
-        File newFile = new File(mfr.getFilename()+".part");
-        if(newFile.exists()){
-            newFile.delete();
-        }
-        ArrayList<DataRange> rangeList = null;
-        byte[] data = null;
-        newFile.createNewFile();
-        ByteBuffer buffer = ByteBuffer.allocate(mfr.getBlocksize());
-        FileChannel rChannel = new FileInputStream(mfr.getFilename()).getChannel();
-        FileChannel wChannel = new FileOutputStream(newFile, true).getChannel();
-        openConnection();
-        http.getResponseHeader();
-
-        for(int i=0;i<fileMap.length;i++){
-            fileOffset = fileMap[i];
-            if( fileOffset != -1 ){
-                rChannel.read(buffer, fileOffset);
-                buffer.flip();
-                wChannel.write(buffer);
-                buffer.clear();
-            } else {
-                if(!rangeQueue){
-                    rangeList=rangeLookUp(i);
-                    range=rangeList.size();
-                    openConnection();
-                    http.setRangesRequest(rangeList);
-                    http.sendRequest();
-                    http.getResponseHeader();
-                    data = http.getResponseBody(mfr.getBlocksize());
-                }
-                if((i*mfr.getBlocksize()+mfr.getBlocksize())<mfr.getLength()){
-                    blockLength = mfr.getBlocksize();
+    private void fileMaker() {
+        try {
+            long start = System.currentTimeMillis();
+            int range = 0;
+            int blockLength = 0;
+            File newFile = new File(mfr.getFilename() + ".part");
+            if (newFile.exists()) {
+                newFile.delete();
+            }
+            ArrayList<DataRange> rangeList = null;
+            byte[] data = null;
+            newFile.createNewFile();
+            ByteBuffer buffer = ByteBuffer.allocate(mfr.getBlocksize());
+            FileChannel rChannel = new FileInputStream(inputFileName).getChannel();
+            FileChannel wChannel = new FileOutputStream(newFile, true).getChannel();
+            openConnection();
+            http.getResponseHeader();
+            for (int i = 0; i < fileMap.length; i++) {
+                fileOffset = fileMap[i];
+                if (fileOffset != -1) {
+                    rChannel.read(buffer, fileOffset);
+                    buffer.flip();
+                    wChannel.write(buffer);
+                    buffer.clear();
                 } else {
-                    blockLength = (int) ((int) (mfr.getBlocksize()) 
+                    if (!rangeQueue) {
+                        rangeList = rangeLookUp(i);
+                        range = rangeList.size();
+                        openConnection();
+                        http.setRangesRequest(rangeList);
+                        http.sendRequest();
+                        http.getResponseHeader();
+                        data = http.getResponseBody(mfr.getBlocksize());
+                    }
+                    if ((i * mfr.getBlocksize() + mfr.getBlocksize()) < mfr.getLength()) {
+                        blockLength = mfr.getBlocksize();
+                    } else {
+                        blockLength = (int) ((int) (mfr.getBlocksize())
                             + (mfr.getLength()
                             - (i * mfr.getBlocksize() + mfr.getBlocksize())));
-                }
-                buffer.put(data, (range-rangeList.size())*mfr.getBlocksize(), blockLength);
-                buffer.flip();
-                wChannel.write(buffer);
-                buffer.clear();
-                rangeList.remove(0);
-                if(rangeList.isEmpty()){
-                    rangeQueue=false;
+                    }
+                    buffer.put(data, (range - rangeList.size()) * mfr.getBlocksize(), blockLength);
+                    buffer.flip();
+                    wChannel.write(buffer);
+                    buffer.clear();
+                    rangeList.remove(0);
+                    if (rangeList.isEmpty()) {
+                        rangeQueue = false;
+                    }
                 }
             }
-        }
-        newFile.setLastModified(getMTime());
-        sha = new SHA1(newFile);
-        if(sha.SHA1sum().equals(mfr.getSha1())){
-            System.out.println("verifying download...checksum matches OK");
-            System.out.println("used "+(mfr.getLength()-(mfr.getBlocksize()*missing))+" "
-                    + "local, fetched "+(mfr.getBlocksize()*missing));
-            //new File(mfr.getFilename()).renameTo(new File(mfr.getFilename()+".zs-old"));
-            //newFile.renameTo(new File(mfr.getFilename()));
-            long end=System.currentTimeMillis();
-            System.out.println("Doba tvorby souboru: "+(double)(end-start)/1000+"s");
-            System.exit(0);
+            newFile.setLastModified(getMTime());
+            sha = new SHA1(newFile);
+            if (sha.SHA1sum().equals(mfr.getSha1())) {
+                System.out.println("verifying download...checksum matches OK");
+                System.out.println("used " + (mfr.getLength() - (mfr.getBlocksize() * missing)) + " " + "local, fetched " + (mfr.getBlocksize() * missing));
+                new File(mfr.getFilename()).renameTo(new File(mfr.getFilename() + ".zs-old"));
+                newFile.renameTo(new File(mfr.getFilename()));
+                long end = System.currentTimeMillis();
+//                System.out.println("Doba tvorby souboru: " + (double) (end-start) / 1000 + "s");
+                System.exit(0);
+            } else {
+                System.out.println("verifying download...checksum don't match");
+                System.out.println("Deleting .part file");
+                newFile.delete();
+                System.exit(1);
+            }
+        } catch (IOException ex) {
+            System.out.println("Can't read or write, check your permissions.");
+            System.exit(1);
         }
     }
 
@@ -222,133 +264,111 @@ public class FileMaker {
      * @throws FileNotFoundException
      * @throws IOException
      */
-    private void checkSimilarity() throws NoSuchAlgorithmException, FileNotFoundException, IOException{
-        Security.addProvider(new JarsyncProvider());
-        config = new Configuration();
-        config.strongSum = MessageDigest.getInstance("MD4");
-        config.weakSum = new Rsum();
-        config.blockLength = mfr.getBlocksize();
-        config.strongSumLength = mfr.getChecksumBytes();
-        Generator gen = new Generator(config);
-
-        int weakSum;
-        byte[] strongSum;
-        byte[] backBuffer=new byte[mfr.getBlocksize()];
-        byte[] blockBuffer=new byte[mfr.getBlocksize()];
-        byte[] fileBuffer;
-        int mebiByte=1048576;
-
-        if(mfr.getLength() < mebiByte && mfr.getBlocksize() < mfr.getLength()){
-            fileBuffer = new byte[(int)mfr.getLength()];
-        } else if (mfr.getBlocksize()>mfr.getLength() || mfr.getBlocksize() > mebiByte) {
-            fileBuffer = new byte[mfr.getBlocksize()];
-        } else {
-            fileBuffer = new byte[mebiByte]; // 1 MiB
-        }
-
-        InputStream is = new FileInputStream(mfr.getFilename());
-        File test = new File(mfr.getFilename());
-        long fileLength = test.length();
-        int n;
-        byte newByte;
-        boolean firstBlock=true;
-        int len=fileBuffer.length;
-        boolean end = false;
-        long start = System.currentTimeMillis();
-        System.out.print("Reading "+mfr.getFilename()+": ");
-        System.out.print("|----------|");
-        double a = 10;
-        while (true) {
-            n=is.read(fileBuffer,0,len);
-            /** Inicializujeme rolling checksum tim, ze spocteme kontrolni soucet
-             *  v prvnim offsetu
-             */
-            if(firstBlock){
-                weakSum = gen.generateWeakSum(fileBuffer, 0);
-                bufferOffset=mfr.getBlocksize();
-                //System.out.println("0. "+weakSum);
-                if(hashLookUp(updateWeakSum(weakSum), null)){
-                    strongSum = gen.generateStrongSum(fileBuffer, 0, mfr.getBlocksize());
-                    hashLookUp(updateWeakSum(weakSum), strongSum);
-                }
-                fileOffset++;
-                firstBlock=false;
+    private void checkSimilarity(){
+        InputStream is = null;
+        try {
+            Security.addProvider(new JarsyncProvider());
+            config = new Configuration();
+            config.strongSum = MessageDigest.getInstance("MD4");
+            config.weakSum = new Rsum();
+            config.blockLength = mfr.getBlocksize();
+            config.strongSumLength = mfr.getChecksumBytes();
+            Generator gen = new Generator(config);
+            int weakSum;
+            byte[] strongSum;
+            byte[] backBuffer = new byte[mfr.getBlocksize()];
+            byte[] blockBuffer = new byte[mfr.getBlocksize()];
+            byte[] fileBuffer;
+            int mebiByte = 1048576;
+            if (mfr.getLength() < mebiByte && mfr.getBlocksize() < mfr.getLength()) {
+                fileBuffer = new byte[(int) mfr.getLength()];
+            } else if (mfr.getBlocksize() > mfr.getLength() || mfr.getBlocksize() > mebiByte) {
+                fileBuffer = new byte[mfr.getBlocksize()];
+            } else {
+                fileBuffer = new byte[mebiByte];
             }
-            
-            //zde muzeme zapocit rolling checksum
-            for( ; bufferOffset<fileBuffer.length ; bufferOffset++){
-                
-                newByte = fileBuffer[bufferOffset];
-                if(fileOffset+mfr.getBlocksize()>fileLength){
-                    newByte=0;
+            is = new FileInputStream(inputFileName);
+            File test = new File(inputFileName);
+            long fileLength = test.length();
+            int n;
+            byte newByte;
+            boolean firstBlock = true;
+            int len = fileBuffer.length;
+            boolean end = false;
+            long start = System.currentTimeMillis();
+            System.out.print("Reading " + inputFileName + ": ");
+            System.out.print("|----------|");
+            double a = 10;
+            while (true) {
+                n = is.read(fileBuffer, 0, len);
+                if (firstBlock) {
+                    weakSum = gen.generateWeakSum(fileBuffer, 0);
+                    bufferOffset = mfr.getBlocksize();
+                    if (hashLookUp(updateWeakSum(weakSum), null)) {
+                        strongSum = gen.generateStrongSum(fileBuffer, 0, mfr.getBlocksize());
+                        hashLookUp(updateWeakSum(weakSum), strongSum);
+                    }
+                    fileOffset++;
+                    firstBlock = false;
                 }
-
-                /** Spocteme rolling checksum */
-                weakSum = gen.generateRollSum(newByte);
-                
-                /**
-                 * V pripade, ze nalezeneme v hash tabulce shodu k slabemu
-                 * rolling checksumu, zacneme pocitat i silny (MD4) checksum,
-                 * abychom se ujistili, ze neslo pouze o kolizi.
-                 */
-                if(hashLookUp(updateWeakSum(weakSum), null)){
-                    if(fileOffset+mfr.getBlocksize()>fileLength){
-                        if(n>0){
-                            Arrays.fill(fileBuffer, n, fileBuffer.length, (byte)0);
+                for (; bufferOffset < fileBuffer.length; bufferOffset++) {
+                    newByte = fileBuffer[bufferOffset];
+                    if (fileOffset + mfr.getBlocksize() > fileLength) {
+                        newByte = 0;
+                    }
+                    weakSum = gen.generateRollSum(newByte);
+                    if (hashLookUp(updateWeakSum(weakSum), null)) {
+                        if (fileOffset + mfr.getBlocksize() > fileLength) {
+                            if (n > 0) {
+                                Arrays.fill(fileBuffer, n, fileBuffer.length, (byte) 0);
+                            } else {
+                                int offset = fileBuffer.length - mfr.getBlocksize() + bufferOffset + 1;
+                                System.arraycopy(fileBuffer, offset, blockBuffer, 0, fileBuffer.length - offset);
+                                Arrays.fill(blockBuffer, fileBuffer.length - offset, blockBuffer.length, (byte) 0);
+                            }
+                        }
+                        if ((bufferOffset - mfr.getBlocksize() + 1) < 0) {
+                            if (n > 0) {
+                                System.arraycopy(backBuffer, backBuffer.length + bufferOffset - mfr.getBlocksize() + 1, blockBuffer, 0, mfr.getBlocksize() - bufferOffset - 1);
+                                System.arraycopy(fileBuffer, 0, blockBuffer, mfr.getBlocksize() - bufferOffset - 1, bufferOffset + 1);
+                            }
+                            strongSum = gen.generateStrongSum(blockBuffer, 0, mfr.getBlocksize());
+                            hashLookUp(updateWeakSum(weakSum), strongSum);
                         } else {
-                            int offset=fileBuffer.length-mfr.getBlocksize()+bufferOffset+1;
-                            System.arraycopy(fileBuffer, offset, blockBuffer, 0, fileBuffer.length-offset);
-                            Arrays.fill(blockBuffer, fileBuffer.length-offset, blockBuffer.length, (byte)0);
+                            strongSum = gen.generateStrongSum(fileBuffer, bufferOffset - mfr.getBlocksize() + 1, mfr.getBlocksize());
+                            hashLookUp(updateWeakSum(weakSum), strongSum);
                         }
                     }
-
-                    if((bufferOffset-mfr.getBlocksize()+1)<0){
-                        if(n>0){
-                            System.arraycopy(backBuffer,
-                                    backBuffer.length+bufferOffset-mfr.getBlocksize()+1,
-                                    blockBuffer, 0, mfr.getBlocksize()-bufferOffset-1);
-
-                            System.arraycopy(fileBuffer, 0, blockBuffer,
-                                    mfr.getBlocksize()-bufferOffset-1, bufferOffset+1);
-                        }
-                        strongSum = gen.generateStrongSum(blockBuffer,
-                                0, mfr.getBlocksize() );
-                        hashLookUp(updateWeakSum(weakSum), strongSum);
-                    } else {
-                        strongSum = gen.generateStrongSum(fileBuffer,
-                                bufferOffset-mfr.getBlocksize()+1,
-                                mfr.getBlocksize() );
-                        hashLookUp(updateWeakSum(weakSum), strongSum);
+                    fileOffset++;
+                    if ((((double) fileOffset / (double) fileLength) * 100) >= a) {
+                        progressBar(((double) fileOffset / (double) fileLength) * 100);
+                        a += 10;
+                    }
+                    if (fileOffset == fileLength) {
+                        end = true;
+                        break;
                     }
                 }
-
-                fileOffset++;
-                if((((double)fileOffset/(double)fileLength)*100)>=a){
-                    progressBar(((double)fileOffset/(double)fileLength)*100);
-                    a+=10;
-                }
-                if(fileOffset==fileLength){
-                    end=true;
+                System.arraycopy(fileBuffer, fileBuffer.length - mfr.getBlocksize(), backBuffer, 0, mfr.getBlocksize());
+                bufferOffset = 0;
+                if (end) {
                     break;
                 }
             }
-            System.arraycopy(fileBuffer, fileBuffer.length-mfr.getBlocksize(),
-                    backBuffer, 0, mfr.getBlocksize());
-            bufferOffset=0;
-            if(end){
-                break;
-            }
+            DecimalFormat df = new DecimalFormat("#.##");
+            df.setDecimalFormatSymbols(DecimalFormatSymbols.getInstance(Locale.US));
+            df.setRoundingMode(RoundingMode.DOWN);
+            System.out.println();
+            complete = matchControl();
+            System.out.println("Target " + df.format(complete) + "% complete.");
+//            long endT = System.currentTimeMillis();
+//            System.out.println(Arrays.toString(fileMap));
+            is.close();
+        } catch (IOException ex) {
+            Logger.getLogger(FileMaker.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (NoSuchAlgorithmException ex) {
+            Logger.getLogger(FileMaker.class.getName()).log(Level.SEVERE, null, ex);
         }
-        DecimalFormat df = new DecimalFormat("#.##");
-        df.setDecimalFormatSymbols(DecimalFormatSymbols.getInstance(Locale.US));
-        df.setRoundingMode(RoundingMode.DOWN);
-        System.out.println();
-        complete=matchControl();
-        System.out.println("Target "+df.format(complete)+"% complete.");
-        long endT = System.currentTimeMillis();
-//        System.out.println("Doba mapovani souboru: "+(double)(endT-start)/1000+"s");
-        System.out.println(Arrays.toString(fileMap));
-        is.close();     
     }
 
     private int updateWeakSum(int weak){

@@ -1,3 +1,29 @@
+/* MetaFileMaker.java
+
+   MetaFileMaker: Metafile making class (jazsyncmake)
+   Copyright (C) 2011 Tomas Hlavnicka <hlavntom@fel.cvut.cz>
+
+   This file is a part of Jazsync.
+
+   Jazsync is free software; you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published by the
+   Free Software Foundation; either version 2 of the License, or (at
+   your option) any later version.
+
+   Jazsync is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with Jazsync; if not, write to the
+
+      Free Software Foundation, Inc.,
+      59 Temple Place, Suite 330,
+      Boston, MA  02111-1307
+      USA
+ */
+
 package jazsync.jazsyncmake;
 
 import gnu.getopt.Getopt;
@@ -15,7 +41,6 @@ import java.security.NoSuchAlgorithmException;
 import java.security.Security;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import jazsync.jazsync.Rsum;
@@ -24,7 +49,6 @@ import org.jarsync.ChecksumPair;
 import org.jarsync.Configuration;
 import org.jarsync.Generator;
 import org.jarsync.JarsyncProvider;
-import org.jarsync.Util;
 
 public class MetaFileMaker {
     
@@ -168,9 +192,11 @@ public class MetaFileMaker {
                 fos.write(p.getStrong());
             }
         } catch (IOException ioe){
-            System.out.println("IO problem in metafile checksums writing");
+            System.out.println("Can't write into the metafile, check your permissions");
+            System.exit(1);
         } catch (NoSuchAlgorithmException nae){
-            System.out.println("MD4 is not working");
+            System.out.println("Problem with MD4 checksum");
+            System.exit(1);
         }
 
         if(noURL){
@@ -237,14 +263,13 @@ public class MetaFileMaker {
     private void help(PrintStream out) {
         out.println("Usage: jazsyncmake [OPTIONS] filename");
         out.println("");
-        out.println("OPTIONS: * == option currently unimplemented");
+        out.println("OPTIONS: ");
         out.println("  -h, --help                     Show this help message");
-        out.println("  -b, --blocksize=BYTES          Specifies blocksize");
-        out.println("  -f, --filename=NEWNAME         Set new filename of output file");
-        out.println("  -o, --outputfile=NEWNAME       Override the default filename and path of metafile");
-        out.println("  -u, --url=URL                  Specifies the URL from which users can download the content");
+        out.println("  -b, --blocksize                Specifies blocksize");
+        out.println("  -f, --filename                 Set new filename of output file");
+        out.println("  -o, --outputfile               Override the default filename and path of metafile");
+        out.println("  -u, --url                      Specifies the URL from which users can download the content");
         out.println("  -V, --version                  Show program version");
-        out.println("* -v, --verbose                  Trace internal processing");
     }
 
     /**

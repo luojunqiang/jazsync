@@ -1,3 +1,29 @@
+/* MetafileReader.java
+
+   MetafileReader: Metafile reader class
+   Copyright (C) 2011 Tomas Hlavnicka <hlavntom@fel.cvut.cz>
+
+   This file is a part of Jazsync.
+
+   Jazsync is free software; you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published by the
+   Free Software Foundation; either version 2 of the License, or (at
+   your option) any later version.
+
+   Jazsync is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with Jazsync; if not, write to the
+
+      Free Software Foundation, Inc.,
+      59 Temple Place, Suite 330,
+      Boston, MA  02111-1307
+      USA
+ */
+
 package jazsync.jazsync;
 
 import gnu.getopt.Getopt;
@@ -5,15 +31,19 @@ import gnu.getopt.LongOpt;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.StringReader;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.jarsync.ChecksumPair;
-import org.jarsync.Util;
 
 /**
  * Class used to read metafile
@@ -39,7 +69,7 @@ public class MetaFileReader {
         new LongOpt("verbose",    LongOpt.NO_ARGUMENT, null, 'v')
     };
 
-    private String url;
+    
     private File metafile;
     private String filename;
     private ChainingHash hashtable;
@@ -65,7 +95,12 @@ public class MetaFileReader {
     private String mf_sha1;
     private String auth;
     //------------------------------
+    private String url;
+    private String localMetafile;
+    private boolean downMetaFile=false;
+    private String extraInputFile;
 
+    /** Option variables */
 
     /**
      * Metafile constructor
@@ -83,10 +118,11 @@ public class MetaFileReader {
                     authing=true;
                     break;
                 case 'i':
-                    System.out.println("Inputfile name (not implemented yet)");
+                    extraInputFile=g.getOptarg();
                     break;
                 case 'k':
-                    System.out.println(".zsync filename (not implemented yet)");
+                    localMetafile=g.getOptarg();
+                    downMetaFile=true;
                     break;
                 case 'o':
                     System.out.println("Outputfile (not implemented yet)");
@@ -129,7 +165,7 @@ public class MetaFileReader {
                 blockNum = Math.round((float)mf_length / (float)mf_blocksize);
                 checkOutputFile();
                 readChecksums();
-            } else if (filename.startsWith("http://")) {   // HTTPS ????
+            } else if (filename.startsWith("http://")) {
                 HttpConnection http = new HttpConnection(filename);
                 http.openConnection();
                 if(authing==true){
@@ -138,6 +174,15 @@ public class MetaFileReader {
                 http.sendRequest();
                 http.getResponseHeader();
                 byte[] mfBytes=http.getResponseBody(0);
+                if(downMetaFile){
+                    try {
+                        OutputStream out = new FileOutputStream(new File(localMetafile));
+                        out.write(mfBytes);
+                    } catch (IOException ex) {
+                        System.out.println("Can't write metafile locally, check your permissions");
+                        System.exit(1);
+                    }
+                }
                 http.closeConnection();
                 readMetaFile(convertBytesToString(mfBytes));
                 blockNum = Math.round((float)mf_length / (float)mf_blocksize);
@@ -158,7 +203,7 @@ public class MetaFileReader {
 
 
     /**
-     * Method used to checking outputfile if exist and is(not) complete
+     * Method used to check outputfile if exist and is(not) complete
      */
     private void checkOutputFile(){
         File file = new File(mf_filename);
@@ -168,15 +213,13 @@ public class MetaFileReader {
                 System.out.println("Read "+mf_filename+". Target 100.0% complete.\n"
                         + "verifying download...checksum matches OK\n"
                         + "used "+mf_length+" local, fetched 0");
-                //System.exit(0);
+                System.exit(0);
             } else {
                 //soubor mame, ale neni kompletni
-                System.out.println("Mame nekompletni");
                 FILE_FLAG = 1;
             }
         } else {
             //nutne stahnout cely soubor
-            System.out.println("Mame kompletni");
             FILE_FLAG = -1;
         }
     }
@@ -374,7 +417,6 @@ public class MetaFileReader {
             item = new Link(p);
             hashtable.insert(item);
         }
-        hashtable.displayTable();
     }
 
     /**
@@ -390,18 +432,16 @@ public class MetaFileReader {
      * @param out Output stream (e.g. System.out)
      */
     private void help(PrintStream out) {
-        out.println("Usage: jazsync [OPTIONS] {filename | url}");
+        out.println("Usage: jazsync [OPTIONS] {local metafilename | url}");
         out.println("");
         out.println("OPTIONS: * == option currently unimplemented");
         out.println("  -h, --help                     Show this help message");
-        out.println("* -A HOSTNAME=USERNAME:PASSWD    Specifies a username and password to be used with the given hostname (can be used multiple times)");
-        out.println("* -i, --inputfile=FILENAME       Specifies (extra) input files");
-        out.println("* -k, --metafile=FILENAME        Indicates  that zsync should save the zsync file that it downloads, with the given filename");
-        out.println("* -o, --outputfile=NEWNAME       Override the default output file name");
-        out.println("* -u, --url=URL                  Specifies URL of .zsync file in case that it contains a relative URL");
-        out.println("* -s, --suppress                 Suppress the progress bar, download rate and ETA display");
+        out.println("  -A USERNAME:PASSWORD           Specifies a username and password if there is authentication needed");
+        out.println("* -i, --inputfile                Specifies (extra) input file");
+        out.println("  -k, --metafile                 Indicates that jazsync should save the metafile, with the given filename");
+        out.println("* -o, --outputfile               Override the default output file name");
+        out.println("  -u, --url=URL                  Specifies URL of local .zsync file in case that it contains a relative URL");
         out.println("  -V, --version                  Show program version");
-        out.println("* -v, --verbose                  Trace internal processing");
     }
 
     /**
@@ -409,7 +449,7 @@ public class MetaFileReader {
      * @param out Output stream (e.g. System.out)
      */
     private void version(PrintStream out){
-        out.println("Version: Jazsync v0.0.1 (jazsync)");
+        out.println("Version: Jazsync v0.7.0 (jazsync)");
         out.println("by Tomáš Hlavnička <hlavntom@fel.cvut.cz>");
     }
 
@@ -533,6 +573,14 @@ public class MetaFileReader {
      */
     public String getUrl() {
         return mf_url;
+    }
+
+    public String getRelativeURL() {
+        return url;
+    }
+
+    public String getInputFile(){
+        return extraInputFile;
     }
 
 }
