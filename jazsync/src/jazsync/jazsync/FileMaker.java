@@ -47,6 +47,7 @@ public class FileMaker {
     private SHA1 sha;
     private int missing;
     private boolean rangeQueue;
+    private double complete;
 
     public FileMaker(String[] args) throws MalformedURLException, NoSuchAlgorithmException, FileNotFoundException, IOException {
          mfr = new MetaFileReader(args);
@@ -57,7 +58,11 @@ public class FileMaker {
          if(mfr.FILE_FLAG==1) {
              System.out.println("Stahneme par bloku");
              checkSimilarity();
-             fileMaker();
+             if(complete>0){
+                fileMaker();
+             } else {
+                 getWholeFile();
+             }
          } else if (mfr.FILE_FLAG==-1) {
              getWholeFile();
          } else {
@@ -338,10 +343,11 @@ public class FileMaker {
         df.setDecimalFormatSymbols(DecimalFormatSymbols.getInstance(Locale.US));
         df.setRoundingMode(RoundingMode.DOWN);
         System.out.println();
-        System.out.println("Target "+df.format(completion())+"% complete.");
+        complete=matchControl();
+        System.out.println("Target "+df.format(complete)+"% complete.");
         long endT = System.currentTimeMillis();
 //        System.out.println("Doba mapovani souboru: "+(double)(endT-start)/1000+"s");
-//        System.out.println(Arrays.toString(fileMap));
+        System.out.println(Arrays.toString(fileMap));
         is.close();     
     }
 
@@ -400,12 +406,28 @@ public class FileMaker {
     }
 
     /**
-     * Returns percentage value of how complete is our file
+     * Clears non-matching blocks and returns percentage
+     * value of how complete is our file
      * @return How many percent of file we have already
      */
-    private double completion(){
+    private double matchControl(){
         missing=0;
         for(int i=0;i<fileMap.length;i++){
+            if(mfr.getSeqNum()==2){ //pouze pokud kontrolujeme matching continuation
+                if(i>0 && i<fileMap.length-1){
+                    if(fileMap[i-1]==-1 && fileMap[i]!=-1 && fileMap[i+1]==-1){
+                            fileMap[i]=-1;
+                    }
+                } else if(i==0) {
+                    if(fileMap[i]!=-1 && fileMap[i+1]==-1){
+                        fileMap[i]=-1;
+                    }
+                } else if(i==fileMap.length-1){
+                    if(fileMap[i]!=-1 && fileMap[i-1]==-1){
+                        fileMap[i]=-1;
+                    }
+                }
+            }
             if(fileMap[i]==-1){
                 missing++;
             }

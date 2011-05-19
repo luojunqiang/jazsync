@@ -35,6 +35,7 @@ public class HttpConnection {
         try {
             code = connection.getResponseCode();
         } catch (IOException e) {
+
             failed(address.toString());
         }
         return code;
@@ -56,6 +57,7 @@ public class HttpConnection {
     public void sendRequest(){
         try{
             connection.setRequestMethod("GET");
+            connection.setRequestProperty("User-Agent", "jazsync");
             if(username!=null && password!=null){
                 String encoding = Base64Coder.encodeLines((username+":"+password).getBytes());
                 connection.setRequestProperty("Authorization", 
@@ -126,6 +128,7 @@ public class HttpConnection {
                 bytes[i]=(byte)in.read();
             }
         } catch (IOException e) {
+            e.printStackTrace();
             failed(address.toString());
         }
 
@@ -189,9 +192,9 @@ public class HttpConnection {
     }
 
     /**
-     * Method parse
-     * @param key
-     * @param values
+     * Parse the length of content send in body
+     * @param key Key name of header line
+     * @param values Values of key header line
      */
     private void parseLength(String key, String values){
         if(key!=null && key.equals("Content-Length")==true){
@@ -222,6 +225,7 @@ public class HttpConnection {
     private void failed(String url){
         System.out.println("Failed on url "+url);
         System.out.println("Could not read file from URL "+url);
+        System.exit(1);
     }
 
 }
