@@ -99,19 +99,21 @@ public class FileMaker {
              System.out.println("");
              System.exit(1);
          }
-         
+
     }
 
     private void openConnection(){
         if(mfr.getUrl().startsWith("http://")){     //absolute URL path to file
             http = new HttpConnection(mfr.getUrl());
         } else {                                    //relative URL path to file
-            try {
-                //relative URL path to file
-                http = new HttpConnection(urlParser(mfr.getMetaFileURL()));
-            } catch (MalformedURLException ex) {
-                System.out.println("URL in malformed format");
+            //relative URL path to file
+            String url;
+            if(mfr.getMetaFileURL().startsWith("http://")){
+                url = urlParser(mfr.getMetaFileURL());
+            } else {
+                url = urlParser(mfr.getRelativeURL());
             }
+            http = new HttpConnection(url);
         }
         http.openConnection();
         if(mfr.getAuthentication()){
@@ -121,6 +123,10 @@ public class FileMaker {
 
     private void getWholeFile(){
         openConnection();
+        System.out.println("Downloading whole file.");
+        if(new File(mfr.getFilename()).exists()){
+            new File(mfr.getFilename()).delete();
+        }
         http.getFile(mfr.getLength(), mfr.getFilename());
         System.out.println("Target 100.0% complete.");
         sha = new SHA1(mfr.getFilename());
@@ -128,15 +134,27 @@ public class FileMaker {
             System.out.println("verifying download...checksum matches OK");
             System.out.println("used 0 local, fetched "+mfr.getLength());
             System.exit(0);
+        } else {
+            System.out.println("verifying download...checksum don't match");
+            System.exit(1);
         }
         http.closeConnection();
     }
-    
-    private String urlParser(URL url){
-        String host = url.getHost().toString();
-        String pathToFile = url.getPath().toString();
-        pathToFile=pathToFile.substring(0, pathToFile.lastIndexOf("/"));
-        String newUrl = ("http://"+host+pathToFile+"/"+mfr.getUrl());
+
+    private String urlParser(String link){
+        String newUrl=null;
+        try {
+            URL url = new URL(link);
+            String host = url.getHost().toString();
+            String pathToFile = url.getPath().toString();
+            pathToFile = pathToFile.substring(0, pathToFile.lastIndexOf("/"));
+            newUrl = "http://" + host + pathToFile + "/" + mfr.getUrl();
+        } catch (MalformedURLException ex) {
+            System.out.println("URL in malformed format, make sure that"
+                        + " metafile contains absolute URL or pass URL of metafile"
+                        + " to jazsync by -u parameter.");
+                System.exit(1);
+        }
         return newUrl;
     }
 
@@ -146,7 +164,7 @@ public class FileMaker {
      */
     private void fileMaker() {
         try {
-            long start = System.currentTimeMillis();
+            double a=10;
             int range = 0;
             int blockLength = 0;
             File newFile = new File(mfr.getFilename() + ".part");
@@ -159,9 +177,16 @@ public class FileMaker {
             ByteBuffer buffer = ByteBuffer.allocate(mfr.getBlocksize());
             FileChannel rChannel = new FileInputStream(inputFileName).getChannel();
             FileChannel wChannel = new FileOutputStream(newFile, true).getChannel();
+            System.out.println();
+            System.out.print("File completion: ");
+            System.out.print("|----------|");
             openConnection();
             http.getResponseHeader();
             for (int i = 0; i < fileMap.length; i++) {
+                if ((((double) i / (double) fileMap.length) * 100) >= a) {
+                    progressBar(((double) i / (double) fileMap.length) * 100);
+                    a += 10;
+                }
                 fileOffset = fileMap[i];
                 if (fileOffset != -1) {
                     rChannel.read(buffer, fileOffset);
@@ -202,8 +227,6 @@ public class FileMaker {
                 System.out.println("used " + (mfr.getLength() - (mfr.getBlocksize() * missing)) + " " + "local, fetched " + (mfr.getBlocksize() * missing));
                 new File(mfr.getFilename()).renameTo(new File(mfr.getFilename() + ".zs-old"));
                 newFile.renameTo(new File(mfr.getFilename()));
-                long end = System.currentTimeMillis();
-//                System.out.println("Doba tvorby souboru: " + (double) (end-start) / 1000 + "s");
                 System.exit(0);
             } else {
                 System.out.println("verifying download...checksum don't match");
@@ -361,8 +384,6 @@ public class FileMaker {
             System.out.println();
             complete = matchControl();
             System.out.println("Target " + df.format(complete) + "% complete.");
-//            long endT = System.currentTimeMillis();
-//            System.out.println(Arrays.toString(fileMap));
             is.close();
         } catch (IOException ex) {
             Logger.getLogger(FileMaker.class.getName()).log(Level.SEVERE, null, ex);

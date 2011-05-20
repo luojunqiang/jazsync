@@ -103,8 +103,6 @@ public class Rsum implements RollingChecksum, Cloneable, java.io.Serializable {
             b+=i*unsignedByte(buf[index]);
             index++;
         }
-        System.out.println("a: "+a);
-        System.out.println("b: "+b);
     }
 
     /**

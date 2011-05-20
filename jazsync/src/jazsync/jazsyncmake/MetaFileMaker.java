@@ -52,9 +52,6 @@ import org.jarsync.JarsyncProvider;
 
 public class MetaFileMaker {
     
-    /** Default block size */
-    private static final int BLOCK_SIZE=2048;
-
     /** Default length of strong checksum (MD4) */
     private static final int STRONG_SUM_LENGTH=16;
 
@@ -74,7 +71,6 @@ public class MetaFileMaker {
 
     private String url;
     private int blocksize;
-    
     private String filename;
     private File file;
     private String outputfile;
@@ -82,20 +78,24 @@ public class MetaFileMaker {
     private boolean newNameFile=false;
     private String header;
 
+    /****************************************/
+    /* Hash-lengths and number of sequence matches */
     /* index 0 - seq_matches
      * index 1 - weakSum length
      * index 2 - strongSum length
      */
 
     private int[] hashLengths = new int[3];
+    /****************************************/
+    /** File length */
     private long fileLength;
     
     
     public MetaFileMaker(String[] args) {
         Security.addProvider(new JarsyncProvider());
-        blocksize=BLOCK_SIZE;
+        //defaulti hodnota blocksize do 100MB souboru 2kB, od 100MB 4kB
+        blocksize=(fileLength < 100000000) ? 2048 : 4096;
         
-        //nutne optimalizace ke zmene delky kontrolnich souctu
         hashLengths[2]=STRONG_SUM_LENGTH;
 
         Getopt g = new Getopt("jazsyncmake", args, OPTSTRING, LONGOPTS);
@@ -172,7 +172,7 @@ public class MetaFileMaker {
             out.write(header);
             out.close();
         } catch (IOException e){
-            System.out.println("Can not create .zsync metafile.");
+            System.out.println("Can't create .zsync metafile, check your permissions");
             System.exit(1);
         }
 
@@ -212,11 +212,9 @@ public class MetaFileMaker {
         hashLengths[1] = (int) Math.ceil(((Math.log(fileLength)
                 + Math.log(blocksize)) / Math.log(2) - 8.6) / hashLengths[0] / 8);
 
-        /* min and max lengths of rsums to store */
         if (hashLengths[1] > 4) hashLengths[1] = 4;
         if (hashLengths[1] < 2) hashLengths[1] = 2;
 
-        /* Now the checksum length; min of two calculations */
         hashLengths[2] = (int) Math.ceil(
                 (20 + (Math.log(fileLength) + Math.log(1 + fileLength / blocksize)) / Math.log(2))
                 / hashLengths[0] / 8);
@@ -225,7 +223,6 @@ public class MetaFileMaker {
             (int) ((7.9 + (20 + Math.log(1 + fileLength / blocksize) / Math.log(2))) / 8);
         if (hashLengths[2] < strongSumLength2)
             hashLengths[2] = strongSumLength2;
-
     }
 
     /**
