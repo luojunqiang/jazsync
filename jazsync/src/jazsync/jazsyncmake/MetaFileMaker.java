@@ -89,12 +89,11 @@ public class MetaFileMaker {
     /****************************************/
     /** File length */
     private long fileLength;
+    private boolean useBlockDefault=true;
     
     
     public MetaFileMaker(String[] args) {
         Security.addProvider(new JarsyncProvider());
-        //defaulti hodnota blocksize do 100MB souboru 2kB, od 100MB 4kB
-        blocksize=(fileLength < 100000000) ? 2048 : 4096;
         
         hashLengths[2]=STRONG_SUM_LENGTH;
 
@@ -112,6 +111,7 @@ public class MetaFileMaker {
                 case 'b':
                     try {
                         blocksize = Integer.parseInt(g.getOptarg());
+                        useBlockDefault=false;
                     } catch (NumberFormatException e) {
                         System.out.println("Blocksize must be a power of 2 (512, 1024, 2048, ...)");
                         System.exit(1);
@@ -149,6 +149,11 @@ public class MetaFileMaker {
                 System.exit(1);
             }
             fileLength=file.length();
+
+            //defaulti hodnota blocksize do 100MB souboru 2kiB, od 100MB 4kiB
+            if(useBlockDefault){
+                blocksize=(fileLength < 100000000) ? 2048 : 4096;
+            }
             if(!newNameFile){
                 outputfile=file.getName()+".zsync";
             }
