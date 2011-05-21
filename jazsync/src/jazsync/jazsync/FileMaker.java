@@ -1,7 +1,7 @@
 /* FileMaker.java
 
    FileMaker: File reading and making class
-   Copyright (C) 2011 Tomas Hlavnicka <hlavntom@fel.cvut.cz>
+   Copyright (C) 2011 Tomáš Hlavnička <hlavntom@fel.cvut.cz>
 
    This file is a part of Jazsync.
 
@@ -53,14 +53,16 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.Locale;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import org.jarsync.ChecksumPair;
 import org.jarsync.Configuration;
 import org.jarsync.Generator;
 import org.jarsync.JarsyncProvider;
 
+/**
+ * Target file making class
+ * @author Tomáš Hlavnička
+ */
 public class FileMaker {
 
     private MetaFileReader mfr;
@@ -183,10 +185,6 @@ public class FileMaker {
             openConnection();
             http.getResponseHeader();
             for (int i = 0; i < fileMap.length; i++) {
-                if ((((double) i / (double) fileMap.length) * 100) >= a) {
-                    progressBar(((double) i / (double) fileMap.length) * 100);
-                    a += 10;
-                }
                 fileOffset = fileMap[i];
                 if (fileOffset != -1) {
                     rChannel.read(buffer, fileOffset);
@@ -219,17 +217,24 @@ public class FileMaker {
                         rangeQueue = false;
                     }
                 }
+                if ((((double) i / ((double) fileMap.length-1)) * 100) >= a) {
+                    progressBar(((double) i / ((double) fileMap.length-1)) * 100);
+                    a += 10;
+                }
             }
             newFile.setLastModified(getMTime());
+            long newLength = newFile.length();
+            if(newLength>mfr.getLength()){
+
+            }
             sha = new SHA1(newFile);
             if (sha.SHA1sum().equals(mfr.getSha1())) {
-                System.out.println("verifying download...checksum matches OK");
+                System.out.println("\nverifying download...checksum matches OK");
                 System.out.println("used " + (mfr.getLength() - (mfr.getBlocksize() * missing)) + " " + "local, fetched " + (mfr.getBlocksize() * missing));
                 new File(mfr.getFilename()).renameTo(new File(mfr.getFilename() + ".zs-old"));
                 newFile.renameTo(new File(mfr.getFilename()));
-                System.exit(0);
             } else {
-                System.out.println("verifying download...checksum don't match");
+                System.out.println("\nverifying download...checksum don't match");
                 System.out.println("Deleting .part file");
                 newFile.delete();
                 System.exit(1);
@@ -252,7 +257,7 @@ public class FileMaker {
                 ranges.add(new DataRange(i*mfr.getBlocksize(),
                        (i*mfr.getBlocksize())+mfr.getBlocksize() ));
             }
-            if(ranges.size()==100){
+            if(ranges.size()==mfr.getRangesNumber()){
                 break;
             }
         }
@@ -378,6 +383,7 @@ public class FileMaker {
                     break;
                 }
             }
+
             DecimalFormat df = new DecimalFormat("#.##");
             df.setDecimalFormatSymbols(DecimalFormatSymbols.getInstance(Locale.US));
             df.setRoundingMode(RoundingMode.DOWN);
@@ -385,24 +391,47 @@ public class FileMaker {
             complete = matchControl();
             System.out.println("Target " + df.format(complete) + "% complete.");
             is.close();
+//            System.out.println(Arrays.toString(fileMap));
         } catch (IOException ex) {
-            Logger.getLogger(FileMaker.class.getName()).log(Level.SEVERE, null, ex);
+            System.out.println("Can't read seed file, check your permissions");
+            System.exit(1);
         } catch (NoSuchAlgorithmException ex) {
-            Logger.getLogger(FileMaker.class.getName()).log(Level.SEVERE, null, ex);
+            System.out.println("Problem with MD4 checksum");
+            System.exit(1);
         }
     }
 
+    /**
+     * Shorten the calculated weakSum according to variable length of weaksum
+     * @param weak Generated full weakSum
+     * @return Shortened weakSum
+     */
     private int updateWeakSum(int weak){
-        byte[] rsum = new byte[]{(byte)0,
-                                  (byte)0,
-                                  (byte)( weak >> 24),
-                                  (byte)((weak << 8) >> 24)};
+        byte[] rsum;
         switch(mfr.getRsumBytes()){
-            case 4:
-                rsum[0]=(byte)((weak << 16) >> 24);
+            case 2:
+                rsum=new byte[]{(byte)0,                    
+                                (byte)0,
+                                (byte)( weak >> 24),        //1
+                                (byte)((weak << 8) >> 24)   //2
+                };
+                break;
             case 3:
-                rsum[1]=(byte)((weak << 24) >> 24);
+                rsum=new byte[]{(byte)((weak << 8) >> 24),  //2
+                                (byte)0,                    //3
+                                (byte)((weak << 24) >> 24), //0
+                                (byte)( weak >> 24)         //1
+                };
+                break;
+            case 4:
+                rsum=new byte[]{(byte)( weak >> 24),        //1
+                                (byte)((weak << 8) >> 24),  //2
+                                (byte)((weak << 16) >> 24), //3
+                                (byte)((weak << 24) >> 24)  //0
+                };
+                break;
             default:
+                rsum=new byte[4];
         }
         int weakSum=0;
         weakSum+=(rsum[0] & 0x000000FF) << 24;
@@ -501,6 +530,10 @@ public class FileMaker {
                 */
                 seq=link.getKey().getSequence();
                 fileMap[seq]=fileOffset;
+                
+                if(seq==fileMap.length-1 && weakSum==0){
+                    fileMap[seq]=-1;
+                }
                 hashtable.delete(new ChecksumPair(weakSum, strongSum,
                         mfr.getBlocksize()*seq,mfr.getBlocksize(),seq));
                 return true;

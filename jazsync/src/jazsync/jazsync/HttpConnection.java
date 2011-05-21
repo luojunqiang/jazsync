@@ -154,7 +154,6 @@ public class HttpConnection {
                 bytes[i]=(byte)in.read();
             }
         } catch (IOException e) {
-            e.printStackTrace();
             failed(address.toString());
         }
 
@@ -171,7 +170,9 @@ public class HttpConnection {
                              * v opacnem pripade si data zkopirujeme
                              */
                             if(bytes[i]!=45 && bytes[i+1]!=45){
-                                System.arraycopy(bytes, dataBegin(bytes,i), rangeBytes, range, blockLength);
+                                try{
+                                    System.arraycopy(bytes, dataBegin(bytes,i), rangeBytes, range, blockLength);
+                                } catch (ArrayIndexOutOfBoundsException e){}
                                 range+=blockLength;
                             }
                         }

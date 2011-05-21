@@ -1,7 +1,7 @@
 /* MetaFileMaker.java
 
    MetaFileMaker: Metafile making class (jazsyncmake)
-   Copyright (C) 2011 Tomas Hlavnicka <hlavntom@fel.cvut.cz>
+   Copyright (C) 2011 Tomáš Hlavnička <hlavntom@fel.cvut.cz>
 
    This file is a part of Jazsync.
 
@@ -50,6 +50,10 @@ import org.jarsync.Configuration;
 import org.jarsync.Generator;
 import org.jarsync.JarsyncProvider;
 
+/**
+ * Metafile making class
+ * @author Tomáš Hlavnička
+ */
 public class MetaFileMaker {
     
     /** Default length of strong checksum (MD4) */
@@ -138,7 +142,7 @@ public class MetaFileMaker {
             }
         }
 
-        //getting filename from arguments
+        //ziskani filename z argumentu
         if (args.length > g.getOptind()) {
             file = new File(args[g.getOptind()]);
             if(file.isDirectory()){
@@ -167,7 +171,6 @@ public class MetaFileMaker {
          * a pocet navazujicich bloku
          */
         analyzeFile();
-
         //creating header and saving it into the created metafile
         HeaderMaker hm=new HeaderMaker(file,filename,url,blocksize,hashLengths);
         header=hm.getFullHeader();
@@ -212,6 +215,10 @@ public class MetaFileMaker {
         }
     }
 
+    /**
+     * File analysis, computing lengths of weak and strong checksums and 
+     * sequence matches, storing the values into the array for easier handle
+     */
     private void analyzeFile(){
         hashLengths[0] = fileLength > blocksize ? 2 : 1;
         hashLengths[1] = (int) Math.ceil(((Math.log(fileLength)
@@ -244,7 +251,7 @@ public class MetaFileMaker {
                                   (byte)((number << 8) >> 24)}; //[1]
                 break;
             case 3:
-                rsum = new byte[]{(byte)((number << 24) >> 24), //[3]
+                rsum = new byte[]{(byte)((number << 24) >> 24), //[2]
                                   (byte)( number >> 24),        //[0]
                                   (byte)((number << 8) >> 24)}; //[1]
                 break;
@@ -267,10 +274,10 @@ public class MetaFileMaker {
         out.println("");
         out.println("OPTIONS: ");
         out.println("  -h, --help                     Show this help message");
-        out.println("  -b, --blocksize                Specifies blocksize");
-        out.println("  -f, --filename                 Set new filename of output file");
-        out.println("  -o, --outputfile               Override the default filename and path of metafile");
-        out.println("  -u, --url                      Specifies the URL from which users can download the content");
+        out.println("  -b, --blocksize NUMBER         Specifies blocksize");
+        out.println("  -f, --filename FILENAME        Set new filename of output file");
+        out.println("  -o, --outputfile FILENAME      Override the default filename and path of metafile");
+        out.println("  -u, --url URL                  Specifies the URL from which users can download the content");
         out.println("  -V, --version                  Show program version");
     }
 

@@ -1,7 +1,7 @@
 /* MetafileReader.java
 
    MetafileReader: Metafile reader class
-   Copyright (C) 2011 Tomas Hlavnicka <hlavntom@fel.cvut.cz>
+   Copyright (C) 2011 Tomáš Hlavnička <hlavntom@fel.cvut.cz>
 
    This file is a part of Jazsync.
 
@@ -28,10 +28,10 @@ package jazsync.jazsync;
 
 import gnu.getopt.Getopt;
 import gnu.getopt.LongOpt;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
@@ -39,10 +39,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.StringReader;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+
 import org.jarsync.ChecksumPair;
 
 /**
@@ -55,7 +52,7 @@ public class MetaFileReader {
     public int FILE_FLAG = 0;
 
     /** The short options. */
-    private static final String OPTSTRING = "A:u:k:i:hV";
+    private static final String OPTSTRING = "A:r:u:k:i:hV";
 
     /** The long options. */
     private static final LongOpt[] LONGOPTS = new LongOpt[] {
@@ -63,6 +60,7 @@ public class MetaFileReader {
         new LongOpt("metafile",   LongOpt.REQUIRED_ARGUMENT, null, 'k'),
         new LongOpt("help",       LongOpt.NO_ARGUMENT, null, 'h'),
         new LongOpt("inputfile",  LongOpt.REQUIRED_ARGUMENT, null, 'i'),
+        new LongOpt("ranges",     LongOpt.REQUIRED_ARGUMENT, null, 'r'),
         new LongOpt("version",    LongOpt.NO_ARGUMENT, null, 'V'),
     };
 
@@ -96,6 +94,7 @@ public class MetaFileReader {
     private String localMetafile;
     private boolean downMetaFile=false;
     private String extraInputFile;
+    private int ranges=100;
 
     /** Option variables */
 
@@ -120,6 +119,19 @@ public class MetaFileReader {
                 case 'k':
                     localMetafile=g.getOptarg();
                     downMetaFile=true;
+                    break;
+                case 'r':
+                    try {
+                        ranges = Integer.parseInt(g.getOptarg());
+                        if(ranges>100 || ranges<1){
+                            System.out.println("Number of simultaneously "
+                                    + "downloaded ranges must be greater than 0 and less or equal to 100.");
+                            System.exit(1);
+                        }
+                    } catch (NumberFormatException e) {
+                        System.out.println("Ranges parameter must be number.");
+                        System.exit(1);
+                    }
                     break;
                 case 'u':
                     url=g.getOptarg();
@@ -405,13 +417,12 @@ public class MetaFileReader {
                 off++;
             }
 
-            //*********************************************
             weakSum=0;
             weakSum+=(weak[2] & 0x000000FF) << 24;
             weakSum+=(weak[3] & 0x000000FF) << 16;
             weakSum+=(weak[0] & 0x000000FF) << 8;
             weakSum+=(weak[1] & 0x000000FF);
-            //*********************************************
+
             p = new ChecksumPair(weakSum,strongSum.clone(),offset,mf_blocksize,seq);
             offset+=mf_blocksize;
             seq++;
@@ -435,10 +446,11 @@ public class MetaFileReader {
     private void help(PrintStream out) {
         out.println("Usage: jazsync [OPTIONS] {local metafilename | url}");
         out.println("");
-        out.println("OPTIONS: * == option currently unimplemented");
+        out.println("OPTIONS: ");
         out.println("  -h, --help                     Show this help message");
         out.println("  -A USERNAME:PASSWORD           Specifies a username and password if there is authentication needed");
         out.println("  -i, --inputfile FILENAME       Specifies (extra) input file");
+        out.println("  -r, --ranges NUMBER            Maximum of simultaneously downloaded blocks (1-100)");
         out.println("  -k, --metafile FILENAME        Indicates that jazsync should download the metafile, with the given filename");
         out.println("  -u, --url URL                  Specifies original URL of local .zsync file in case that it contains a relative URL");
         out.println("  -V, --version                  Show program version");
@@ -581,6 +593,10 @@ public class MetaFileReader {
      */
     public String getRelativeURL() {
         return url;
+    }
+
+    public int getRangesNumber(){
+        return ranges;
     }
 
     /**
