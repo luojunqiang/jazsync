@@ -1,7 +1,7 @@
 /* HttpConnection.java
 
    HttpConnection: HTTP connection and parsing methods for Range requests
-   Copyright (C) 2011 Tomas Hlavnicka <hlavntom@fel.cvut.cz>
+   Copyright (C) 2011 Tomáš Hlavnička <hlavntom@fel.cvut.cz>
 
    This file is a part of Jazsync.
 
@@ -38,6 +38,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * HTTP connection with Range support class
+ * @author Tomáš Hlavnička
+ */
 public class HttpConnection {
     private String rangeRequest;
     private String username;
@@ -56,6 +60,10 @@ public class HttpConnection {
         }
     }
 
+    /**
+     * Returns HTTP status code of response
+     * @return HTTP code
+     */
     private int getHttpStatusCode(){
         int code=0;
         try {
@@ -68,7 +76,7 @@ public class HttpConnection {
     }
 
     /**
-     *
+     * Opens HTTP connection
      */
     public void openConnection(){
         try {
@@ -80,6 +88,9 @@ public class HttpConnection {
         }
     }
 
+    /**
+     * Sends HTTP GET request
+     */
     public void sendRequest(){
         try{
             connection.setRequestMethod("GET");
@@ -98,7 +109,7 @@ public class HttpConnection {
     }
 
     /**
-     * Method used to initialize ranges for http request
+     * Sets ranges for http request
      * @param ranges ArrayList of DataRange objects containing block ranges
      */
     public void setRangesRequest(ArrayList<DataRange> ranges){
@@ -111,16 +122,23 @@ public class HttpConnection {
     }
 
     /**
-     *
-     * @param username
-     * @param password
+     * Sets login for authentication for HTTP request
+     * @param username Authentication username
+     * @param password Authentication password
      */
     public void setAuthentication(String username, String password){
         this.username=username;
         this.password=password;
     }
 
-    private boolean compareBytes(byte[] src, int srcOff, byte[] bound){
+    /**
+     * Comparing to find boundaries in byte stream
+     * @param src Byte array with data
+     * @param srcOff Offset in byte array with data
+     * @param bound Byte array with boundary value
+     * @return
+     */
+    private boolean boundaryCompare(byte[] src, int srcOff, byte[] bound){
         int j = srcOff;
         for(int i=0; i<bound.length; i++){
             if(src[j]!=bound[i]){
@@ -131,6 +149,13 @@ public class HttpConnection {
         return true;
     }
 
+    /**
+     * Method that looks through byte array and figure out where boundaries are
+     * and where relevant data starts
+     * @param src Array where we are trying to find data boundaries
+     * @param i Offset of src array where we are starting the look up
+     * @return Offset where the data starts
+     */
     private int dataBegin(byte[] src, int i){
         int newLine=0;
         int offset=i;
@@ -146,6 +171,11 @@ public class HttpConnection {
         return offset;
     }
 
+    /**
+     * Downloads data block or ranges of blocks
+     * @param blockLength Length of a data block that we are downloading
+     * @return Content of body in byte array
+     */
     public byte[] getResponseBody(int blockLength){
         byte[] bytes = new byte[(int)contLen];
         try {
@@ -157,14 +187,15 @@ public class HttpConnection {
             failed(address.toString());
         }
 
+        //pripad, kdy data obsahuji hranice (code 206 - partial content)
         if(boundary!=null){
             int range=0;
-            byte[] rangeBytes = new byte[(int)contLen];
+            byte[] rangeBytes = new byte[(int)contLen+blockLength];
                 for(int i = 0; i <bytes.length;i++){
                     //jestlize jsou ve streamu "--"
                     if(bytes[i]==45 && bytes[i+1]==45){
                         //zkontrolujeme jestli za "--" je boundary hodnota
-                        if(compareBytes(bytes, i+2, boundaryBytes)){
+                        if(boundaryCompare(bytes, i+2, boundaryBytes)){
                             i+=2+boundaryBytes.length; //presuneme se za boundary
                             /* pokud je za boundary dalsi "--" jde o konec streamu
                              * v opacnem pripade si data zkopirujeme
@@ -172,7 +203,9 @@ public class HttpConnection {
                             if(bytes[i]!=45 && bytes[i+1]!=45){
                                 try{
                                     System.arraycopy(bytes, dataBegin(bytes,i), rangeBytes, range, blockLength);
-                                } catch (ArrayIndexOutOfBoundsException e){}
+                                } catch (ArrayIndexOutOfBoundsException e){
+                                    /*osetreni vyjimky v pripade kopirovani kratsiho bloku dat */
+                                }
                                 range+=blockLength;
                             }
                         }
@@ -186,6 +219,11 @@ public class HttpConnection {
         return bytes;
     }
 
+    /**
+     * Downloads whole file
+     * @param length Length of the file
+     * @param filename Name of the downloaded and saved file
+     */
     public void getFile(Long length, String filename){
         try {
             FileOutputStream fos=new FileOutputStream(filename, true);
@@ -197,7 +235,12 @@ public class HttpConnection {
             failed(address.toString());
         }
     }
-    
+
+    /**
+     * Returns http response header and looks up for a boundary and length keys,
+     * saving their values into the variables
+     * @return Returns header in String format
+     */
     public String getResponseHeader(){
         String header="";
         Map responseHeader = connection.getHeaderFields();
@@ -245,10 +288,17 @@ public class HttpConnection {
         }
     }
 
+    /**
+     * Closes HTTP connection
+     */
     public void closeConnection(){
         connection.disconnect();
     }
 
+    /**
+     * Prints out warning message, if connecting to <code>url</code> fails
+     * @param url URL (in String format) that we are trying to contact
+     */
     private void failed(String url){
         System.out.println("Failed on url "+url);
         System.out.println("Could not read file from URL "+url);

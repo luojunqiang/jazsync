@@ -89,7 +89,7 @@ public class FileMaker {
              inputFileName=mfr.getFilename();
          }
          if(mfr.FILE_FLAG==1) {
-             checkSimilarity();
+             mapMatcher();
              if(complete>0){
                 fileMaker();
              } else {
@@ -125,7 +125,7 @@ public class FileMaker {
 
     private void getWholeFile(){
         openConnection();
-        System.out.println("Downloading whole file.");
+        System.out.println("No relevant data found, downloading whole file.");
         if(new File(mfr.getFilename()).exists()){
             new File(mfr.getFilename()).delete();
         }
@@ -160,10 +160,6 @@ public class FileMaker {
         return newUrl;
     }
 
-    /**
-     *
-     * @throws IOException
-     */
     private void fileMaker() {
         try {
             double a=10;
@@ -235,7 +231,7 @@ public class FileMaker {
                 newFile.renameTo(new File(mfr.getFilename()));
             } else {
                 System.out.println("\nverifying download...checksum don't match");
-                System.out.println("Deleting .part file");
+                System.out.println("Deleting temporary file");
                 newFile.delete();
                 System.exit(1);
             }
@@ -257,7 +253,7 @@ public class FileMaker {
                 ranges.add(new DataRange(i*mfr.getBlocksize(),
                        (i*mfr.getBlocksize())+mfr.getBlocksize() ));
             }
-            if(ranges.size()==mfr.getRangesNumber()){
+            if(ranges.size()==10){
                 break;
             }
         }
@@ -292,7 +288,7 @@ public class FileMaker {
      * @throws FileNotFoundException
      * @throws IOException
      */
-    private void checkSimilarity(){
+    private void mapMatcher(){
         InputStream is = null;
         try {
             Security.addProvider(new JarsyncProvider());
@@ -323,7 +319,6 @@ public class FileMaker {
             boolean firstBlock = true;
             int len = fileBuffer.length;
             boolean end = false;
-            long start = System.currentTimeMillis();
             System.out.print("Reading " + inputFileName + ": ");
             System.out.print("|----------|");
             double a = 10;
@@ -390,6 +385,7 @@ public class FileMaker {
             System.out.println();
             complete = matchControl();
             System.out.println("Target " + df.format(complete) + "% complete.");
+            fileMap[fileMap.length-1]=-1;
             is.close();
 //            System.out.println(Arrays.toString(fileMap));
         } catch (IOException ex) {
@@ -530,10 +526,6 @@ public class FileMaker {
                 */
                 seq=link.getKey().getSequence();
                 fileMap[seq]=fileOffset;
-                
-                if(seq==fileMap.length-1 && weakSum==0){
-                    fileMap[seq]=-1;
-                }
                 hashtable.delete(new ChecksumPair(weakSum, strongSum,
                         mfr.getBlocksize()*seq,mfr.getBlocksize(),seq));
                 return true;

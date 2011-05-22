@@ -3,20 +3,19 @@ package jazsync.jazsyncmake;
 public class jazsyncmake {
 
     public static void main(String[] args) {
-        args=new String[9];
+        args=new String[7];
         args[0]="-b";
-        args[1]="128";
-        args[2]="-f";
-        args[3]="jazsync.txt";
-        args[4]="-u";
-        args[5]="http://127.0.0.1/jazsync.txt";
-        args[6]="/home/Solitary/jazsync.txt";
-        args[7]="-o";
-        args[8]="/home/Solitary/jazsync.txt.jazsync4";
-
-//        args[0]="/var/www/html/ubuntu-11.04-desktop-i386.iso";
-//        args[1]="-u";
-//        args[2]="http://127.0.0.1/ubuntu-11.04-desktop-i386.iso";
+        args[1]="8192";
+//        args[2]="-f";
+//        args[3]="jazsync.txt";
+//        args[4]="-u";
+//        args[5]="http://127.0.0.1/jazsync.txt";
+//        args[6]="/home/Solitary/jazsync.txt";
+        args[5]="-o";
+        args[6]="ubuntu.zsync-8192";
+        args[2]="/var/www/html/ubuntu-11.04-desktop-i386.iso";
+        args[3]="-u";
+        args[4]="http://127.0.0.1/ubuntu-11.04-desktop-i386.iso";
 
 //        args[0]="-b";
 //        args[1]="128";

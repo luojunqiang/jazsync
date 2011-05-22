@@ -162,7 +162,7 @@ public class MetaFileReader {
              */
             if(metafile.isFile()){
                 readMetaFile();
-                blockNum = Math.round((float)mf_length / (float)mf_blocksize);
+                blockNum = (int) Math.ceil((double)mf_length / (double)mf_blocksize);
                 checkOutputFile();
                 readChecksums();
             } else if (filename.startsWith("http://")) {
