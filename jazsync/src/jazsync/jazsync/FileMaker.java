@@ -253,7 +253,7 @@ public class FileMaker {
                 ranges.add(new DataRange(i*mfr.getBlocksize(),
                        (i*mfr.getBlocksize())+mfr.getBlocksize() ));
             }
-            if(ranges.size()==10){
+            if(ranges.size()==mfr.getRangesNumber()){
                 break;
             }
         }

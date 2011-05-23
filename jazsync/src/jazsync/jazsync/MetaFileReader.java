@@ -595,6 +595,10 @@ public class MetaFileReader {
         return url;
     }
 
+    /**
+     * Maximum number of simultaneously downloaded blocks
+     * @return Max. number of blocks downloaded in one piece
+     */
     public int getRangesNumber(){
         return ranges;
     }

@@ -154,9 +154,9 @@ public class MetaFileMaker {
             }
             fileLength=file.length();
 
-            //defaulti hodnota blocksize do 100MB souboru 2kiB, od 100MB 4kiB
+            //vypocet optimalniho blocksize podle velikosti souboru
             if(useBlockDefault){
-                blocksize=(fileLength < 100000000) ? 2048 : 4096;
+                computeBlockSize();
             }
             if(!newNameFile){
                 outputfile=file.getName()+".zsync";
@@ -263,6 +263,35 @@ public class MetaFileMaker {
                 break;
         }
         return rsum;
+    }
+
+    /**
+     * Calculates optimal blocksize for a file
+     */
+    private void computeBlockSize(){
+        int[][] array = new int[10][2];
+        array[0][0]=2048;
+        for(int i=1;i<array.length;i++){
+            array[i][0]=array[i-1][0]*2;
+            array[i][1]=array[i][0];
+        }
+        //zarucime, ze se soubor rozdeli priblize na 50000 bloku
+        long constant = fileLength/50000;
+
+        for(int i=0;i<array.length;i++){
+                array[i][0]=(int) Math.abs(array[i][0]-constant);
+        }
+        int min = array[0][0];
+        for(int i=0;i<array.length;i++){
+            if(array[i][0] < min){
+                min = array[i][0];
+            }
+        }
+        for(int i=0;i<array.length;i++){
+            if(array[i][0]==min){
+                blocksize=array[i][1];
+            }
+        }
     }
 
     /**
