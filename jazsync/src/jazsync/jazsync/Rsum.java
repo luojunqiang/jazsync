@@ -134,8 +134,10 @@ public class Rsum implements RollingChecksum, Cloneable, java.io.Serializable {
      * @param b Byte to convert
      * @return Unsigned value of byte <code>b</code>
      */
-    private int unsignedByte(byte b){
-        if(b<0) return b+256;
+    private short unsignedByte(byte b){
+        if(b<0) {
+            return (short)(b+256);
+        }
         return b;
     }
 

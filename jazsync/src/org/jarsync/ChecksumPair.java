@@ -115,10 +115,22 @@ public class ChecksumPair implements Cloneable, java.io.Serializable {
       this(weak, strong, -1L, 0, 0);
    }
 
+   /**
+    * Create a new checksum pair with only weak checksum
+    *
+    * @param weak The weak checksum.
+    */
    public ChecksumPair(int weak){
        this(weak, null, -1L, 0, 0);
    }
 
+      /**
+    * Create a new checksum pair with no associated offset.
+    *
+    * @param weak The weak checksum.
+    * @param strong The strong checksum.
+    * @param seq The sequence number
+    */
    public ChecksumPair(int weak, byte[] strong, int seq){
        this(weak, null, -1L, 0, seq);
    }

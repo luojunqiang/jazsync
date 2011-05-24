@@ -57,20 +57,18 @@ import org.jarsync.JarsyncProvider;
 public class MetaFileMaker {
     
     /** Default length of strong checksum (MD4) */
-    private static final int STRONG_SUM_LENGTH=16;
+    private final int STRONG_SUM_LENGTH=16;
 
     /** The short options. */
-    private static final String OPTSTRING = "o:u:f:b:hVv";
+    private final String OPTSTRING = "o:u:f:b:m";
 
     /** The long options. */
-    private static final LongOpt[] LONGOPTS = new LongOpt[] {
+    private final LongOpt[] LONGOPTS = new LongOpt[] {
         new LongOpt("blocksize",  LongOpt.REQUIRED_ARGUMENT, null, 'b'),
         new LongOpt("url",        LongOpt.REQUIRED_ARGUMENT, null, 'u'),
-        new LongOpt("help",       LongOpt.NO_ARGUMENT, null, 'h'),
         new LongOpt("filename",   LongOpt.REQUIRED_ARGUMENT, null, 'f'),
-        new LongOpt("version",    LongOpt.NO_ARGUMENT, null, 'V'),
         new LongOpt("outputfile", LongOpt.REQUIRED_ARGUMENT, null, 'o'),
-        new LongOpt("verbose",    LongOpt.NO_ARGUMENT, null, 'v')
+        new LongOpt("make",       LongOpt.NO_ARGUMENT, null, 'm')
     };
 
     private String url;
@@ -98,7 +96,6 @@ public class MetaFileMaker {
     
     public MetaFileMaker(String[] args) {
         Security.addProvider(new JarsyncProvider());
-        
         hashLengths[2]=STRONG_SUM_LENGTH;
 
         Getopt g = new Getopt("jazsyncmake", args, OPTSTRING, LONGOPTS);
@@ -107,6 +104,8 @@ public class MetaFileMaker {
             switch (c) {
                 case 'f':
                     filename = g.getOptarg();
+                    break;
+                case 'm':
                     break;
                 case 'u':
                     url = g.getOptarg();
@@ -127,15 +126,7 @@ public class MetaFileMaker {
                    break;
                 case '?':
                     System.out.println("Try 'jazsyncmake --help' for more info.");
-                    break;
-                case 'h':
-                    help(System.out);
-                    System.exit(0);
-                case 'V':
-                    version(System.out);
-                    System.exit(0);
-                case 'v':
-                    System.out.println("Verbose mode (not implemented yet)");
+                    System.exit(1);
                     break;
                 default:
                     System.out.print("getopt() returned " + c + "\n");
@@ -193,7 +184,7 @@ public class MetaFileMaker {
             config.blockLength = blocksize;
             config.strongSumLength = hashLengths[2];
             Generator gen = new Generator(config);
-            List<ChecksumPair> list = new ArrayList<ChecksumPair>(Math.round((float)file.length() / (float)blocksize));
+            List<ChecksumPair> list = new ArrayList<ChecksumPair>((int)Math.ceil((double)file.length() / (double)blocksize));
             list = gen.generateSums(file);
             for(ChecksumPair p : list){
                 fos.write(intToBytes(p.getWeak(),hashLengths[1]));
@@ -222,11 +213,10 @@ public class MetaFileMaker {
     private void analyzeFile(){
         hashLengths[0] = fileLength > blocksize ? 2 : 1;
         hashLengths[1] = (int) Math.ceil(((Math.log(fileLength)
-                + Math.log(blocksize)) / Math.log(2) - 8.6) / hashLengths[0] / 8);
+                + Math.log(blocksize)) / Math.log(2) - 8.6) / 8);
 
         if (hashLengths[1] > 4) hashLengths[1] = 4;
         if (hashLengths[1] < 2) hashLengths[1] = 2;
-
         hashLengths[2] = (int) Math.ceil(
                 (20 + (Math.log(fileLength) + Math.log(1 + fileLength / blocksize)) / Math.log(2))
                 / hashLengths[0] / 8);
@@ -271,13 +261,13 @@ public class MetaFileMaker {
     private void computeBlockSize(){
         int[][] array = new int[10][2];
         array[0][0]=2048;
+        array[0][1]=2048;
         for(int i=1;i<array.length;i++){
             array[i][0]=array[i-1][0]*2;
             array[i][1]=array[i][0];
         }
         //zarucime, ze se soubor rozdeli priblize na 50000 bloku
         long constant = fileLength/50000;
-
         for(int i=0;i<array.length;i++){
                 array[i][0]=(int) Math.abs(array[i][0]-constant);
         }
@@ -292,30 +282,5 @@ public class MetaFileMaker {
                 blocksize=array[i][1];
             }
         }
-    }
-
-    /**
-     * Prints out a help message
-     * @param out Output stream (e.g. System.out)
-     */
-    private void help(PrintStream out) {
-        out.println("Usage: jazsyncmake [OPTIONS] filename");
-        out.println("");
-        out.println("OPTIONS: ");
-        out.println("  -h, --help                     Show this help message");
-        out.println("  -b, --blocksize NUMBER         Specifies blocksize");
-        out.println("  -f, --filename FILENAME        Set new filename of output file");
-        out.println("  -o, --outputfile FILENAME      Override the default filename and path of metafile");
-        out.println("  -u, --url URL                  Specifies the URL from which users can download the content");
-        out.println("  -V, --version                  Show program version");
-    }
-
-    /**
-     * Prints out a version message
-     * @param out Output stream (e.g. System.out)
-     */
-    private void version(PrintStream out){
-        out.println("Version: Jazsync v0.0.1 (jazsyncmake)");
-        out.println("by Tomáš Hlavnička <hlavntom@fel.cvut.cz>");
     }
 }

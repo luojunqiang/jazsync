@@ -219,10 +219,6 @@ public class FileMaker {
                 }
             }
             newFile.setLastModified(getMTime());
-            long newLength = newFile.length();
-            if(newLength>mfr.getLength()){
-
-            }
             sha = new SHA1(newFile);
             if (sha.SHA1sum().equals(mfr.getSha1())) {
                 System.out.println("\nverifying download...checksum matches OK");
@@ -232,7 +228,7 @@ public class FileMaker {
             } else {
                 System.out.println("\nverifying download...checksum don't match");
                 System.out.println("Deleting temporary file");
-                newFile.delete();
+                //newFile.delete();
                 System.exit(1);
             }
         } catch (IOException ex) {
@@ -241,8 +237,9 @@ public class FileMaker {
         }
     }
 
-    /** Misto serioveho stahovani si projedem cely fileMap, dokud nenasbirame
-     *  maximalne 20 chybejicich bloku, o ty si pozadame a budeme je drzet v pameti.
+    /**
+     *  Misto serioveho stahovani si projedem cely fileMap, dokud nenasbirame
+     *  maximalne X chybejicich bloku, o ty si pozadame a budeme je drzet v pameti.
      *  Postupne je pak budeme z pameti pri spravnych prilezitostech psat do souboru,
      *  dokud vsechno z pameti nevypiseme. Nasledne muzeme s pruzkumem fileMap pokracovat.
      */
@@ -268,7 +265,7 @@ public class FileMaker {
      * @return Time as long value in milliseconds passed since 1.1.1970
      */
     private long getMTime() {
-        long mtime=0;
+        long mtime = 0;
         try{
             SimpleDateFormat sdf = new SimpleDateFormat("E, dd MMM yyyy HH:mm:ss Z",Locale.US);
             Date date = sdf.parse(mfr.getMtime());
@@ -511,20 +508,22 @@ public class FileMaker {
         ChecksumPair p;
         if(strongSum==null){
             p = new ChecksumPair(weakSum);
-            Link link = hashtable.find(p);
+            ChecksumPair link = hashtable.find(p);
+            //Link link = hashtable.find(p);
             if(link!=null){
                 return true;
             }
         } else {
             p = new ChecksumPair(weakSum, strongSum);
-            Link link = hashtable.findMatch(p);
+            ChecksumPair link = hashtable.findMatch(p);
+            //Link link = hashtable.findMatch(p);
             int seq;
             if(link!=null){
                /** V pripade, ze nalezneme shodu si zapiseme do file mapy offset
                 * bloku, kde muzeme dana data ziskat.
                 * Nasledne po sobe muzeme tento zaznam z hash tabulky vymazat.
                 */
-                seq=link.getKey().getSequence();
+                seq=link.getSequence();
                 fileMap[seq]=fileOffset;
                 hashtable.delete(new ChecksumPair(weakSum, strongSum,
                         mfr.getBlocksize()*seq,mfr.getBlocksize(),seq));

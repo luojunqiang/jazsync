@@ -52,16 +52,14 @@ public class MetaFileReader {
     public int FILE_FLAG = 0;
 
     /** The short options. */
-    private static final String OPTSTRING = "A:r:u:k:i:hV";
+    private final String OPTSTRING = "A:r:u:k:i";
 
     /** The long options. */
-    private static final LongOpt[] LONGOPTS = new LongOpt[] {
+    private final LongOpt[] LONGOPTS = new LongOpt[] {
         new LongOpt("url",        LongOpt.REQUIRED_ARGUMENT, null, 'u'),
         new LongOpt("metafile",   LongOpt.REQUIRED_ARGUMENT, null, 'k'),
-        new LongOpt("help",       LongOpt.NO_ARGUMENT, null, 'h'),
         new LongOpt("inputfile",  LongOpt.REQUIRED_ARGUMENT, null, 'i'),
         new LongOpt("ranges",     LongOpt.REQUIRED_ARGUMENT, null, 'r'),
-        new LongOpt("version",    LongOpt.NO_ARGUMENT, null, 'V'),
     };
 
 
@@ -136,9 +134,6 @@ public class MetaFileReader {
                 case 'u':
                     url=g.getOptarg();
                     break;
-                case 'h':
-                    help(System.out);
-                    System.exit(0);
                 case 'V':
                     version(System.out);
                     System.exit(0);
@@ -396,7 +391,7 @@ public class MetaFileReader {
         //vytvorime hashtable o velikosti 2^i (max. 2^16, min. 2^4)
         hashtable = new ChainingHash(2 << (i-1));
         ChecksumPair p = null;
-        Link item;
+        //Link item;
         int offset=0;
         int weakSum=0;
         int seq=0;
@@ -426,8 +421,8 @@ public class MetaFileReader {
             p = new ChecksumPair(weakSum,strongSum.clone(),offset,mf_blocksize,seq);
             offset+=mf_blocksize;
             seq++;
-            item = new Link(p);
-            hashtable.insert(item);
+            //item = new Link(p);
+            hashtable.insert(p);
         }
     }
 
@@ -440,28 +435,11 @@ public class MetaFileReader {
     }
 
     /**
-     * Prints out a help message
-     * @param out Output stream (e.g. System.out)
-     */
-    private void help(PrintStream out) {
-        out.println("Usage: jazsync [OPTIONS] {local metafilename | url}");
-        out.println("");
-        out.println("OPTIONS: ");
-        out.println("  -h, --help                     Show this help message");
-        out.println("  -A USERNAME:PASSWORD           Specifies a username and password if there is authentication needed");
-        out.println("  -i, --inputfile FILENAME       Specifies (extra) input file");
-        out.println("  -r, --ranges NUMBER            Maximum of simultaneously downloaded blocks (1-100)");
-        out.println("  -k, --metafile FILENAME        Indicates that jazsync should download the metafile, with the given filename");
-        out.println("  -u, --url URL                  Specifies original URL of local .zsync file in case that it contains a relative URL");
-        out.println("  -V, --version                  Show program version");
-    }
-
-    /**
      * Prints out a version message
      * @param out Output stream (e.g. System.out)
      */
     private void version(PrintStream out){
-        out.println("Version: Jazsync v0.7.0 (jazsync)");
+        out.println("Version: Jazsync v0.8.1 (jazsync)");
         out.println("by Tomáš Hlavnička <hlavntom@fel.cvut.cz>");
     }
 

@@ -26,6 +26,7 @@
 
 package jazsync.jazsync;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import org.jarsync.ChecksumPair;
 
@@ -34,28 +35,18 @@ import org.jarsync.ChecksumPair;
  * @author Tomáš Hlavnička
  */
 public class ChainingHash {
-    private SortedList[] hashArray;
+    private ArrayList<ArrayList> hashArray;
     private int arraySize;
 
     /**
      * Initializing chaining hash table of <code>size</code>
      * @param size Size of the hash table
      */
-    public ChainingHash(int size) {
-        arraySize = size;
-        hashArray = new SortedList[arraySize];
+    public ChainingHash(int size){
+        arraySize=size;
+        hashArray = new ArrayList<ArrayList>(arraySize);
         for (int i = 0; i < arraySize; i++) {
-            hashArray[i] = new SortedList();
-        }
-    }
-
-    /**
-     * Method used to display the hash table
-     */
-    public void displayTable() {
-        for (int j = 0; j < arraySize; j++) {
-            System.out.print(j+". ");
-            hashArray[j].displayList();
+            hashArray.add(i, new ArrayList<ChecksumPair>());
         }
     }
 
@@ -69,184 +60,66 @@ public class ChainingHash {
     }
 
     /**
-     * Method inserting link into the table
-     * @param link Link containing the object we want to insert into the table
+     * Method inserting object into the table
+     * @param pKey Object we are inserting
      */
-    public void insert(Link link) {
-        ChecksumPair pKey = link.getKey();
+    public void insert(ChecksumPair pKey){
         int hashValue = hashFunction(pKey);
-        hashArray[hashValue].insert(link);
+        hashArray.get(hashValue).add(pKey);
     }
 
     /**
      * Method used to delete an object from hash table
-     * @param pKey
+     * @param pKey Object we want to delete from table
      */
-    public void delete(ChecksumPair pKey) {
+    public void delete(ChecksumPair pKey){
         int hashValue = hashFunction(pKey);
-        hashArray[hashValue].delete(pKey);
+        hashArray.get(hashValue).remove(pKey);
     }
 
     /**
      * Method used to find an object in hash table using only weakSum
-     * @param pKey Object that we are finding
-     * @return Link where the object is
+     * @param pKey Object that we are looking for
+     * @return Object if found, null if not
      */
-    public Link find(ChecksumPair pKey) {
+    public ChecksumPair find(ChecksumPair pKey){
         int hashValue = hashFunction(pKey);
-        Link theLink = hashArray[hashValue].find(pKey);
-        return theLink;
+        ChecksumPair p = null;
+        for(int i=0;i<hashArray.get(hashValue).size();i++){
+            p = (ChecksumPair) hashArray.get(hashValue).get(i);
+            if(p.getWeak()==pKey.getWeak()){
+                return p;
+            }
+        }
+        return null;
     }
 
     /**
      * Method used to find an object in hash table using weakSum and strongSum
-     * @param pKey Object that we are finding
-     * @return Link where the object is
+     * @param pKey Object that we are looking for
+     * @return Object if found, null if not
      */
-    public Link findMatch(ChecksumPair pKey) {
+    public ChecksumPair findMatch(ChecksumPair pKey){
         int hashValue = hashFunction(pKey);
-        Link theLink = hashArray[hashValue].findMatch(pKey);
-        return theLink;
-    }
-}
-
-class Link {
-
-    private ChecksumPair blockSums;
-    public Link next;
-
-    /**
-     * Link constructor
-     * @param p ChecksumPair object
-     */
-    public Link(ChecksumPair p) {
-        blockSums = p;
-    }
-
-    /**
-     * Weak rolling checksum getter
-     * @return Weak checksum
-     */
-    public int getWeakKey() {
-        return blockSums.getWeak();
-    }
-
-    /**
-     * Strong checksum getter
-     * @return Strong checksum
-     */
-    public byte[] getStrongKey(){
-        return blockSums.getStrong();
-    }
-
-    /**
-     * Key object getter
-     * @return The key object
-     */
-    public ChecksumPair getKey() {
-        return blockSums;
-    }
-
-    /**
-     * Displaying contain of the link
-     */
-    public void displayLink() {
-        System.out.print(blockSums.toString() + " ");
-    }
-}
-
-class SortedList {
-
-    private Link first;
-
-    /**
-     * SortedList constructor
-     */
-    public SortedList() {
-        first = null;
-    }
-
-    /**
-     * Method used to insert link with ChecksumPair object into the list
-     * @param link Link with ChecksumPair object
-     */
-    public void insert(Link link) {
-        Link previous = null;
-        Link current = first;
-        while (current != null) {
-            previous = current;
-            current = current.next;
-        }
-        if (previous == null) {
-            first = link;
-        } else {
-            previous.next = link;
-        }
-        link.next = current;
-    }
-
-    /**
-     * Method used to delete a ChecksumPair object from sorted list
-     * @param key ChecksumPair object that we want to delete from list
-     */
-    public void delete(ChecksumPair key) {
-        Link previous = null;
-        Link current = first;
-        while (current != null && !key.equals(current.getKey())) {
-            previous = current;
-            current = current.next;
-            
-        }
-        if (previous == null) {
-            first = first.next;
-        } else {
-            previous.next = current.next;
-        }
-    }
-
-    /**
-     * Method used to find a ChecksumPair object in list using only weakSum
-     * @param pKey Object that we are finding
-     * @return Link Returns the link with object
-     */
-    public Link find(ChecksumPair pKey) {
-        Link current = first;
-        while (current != null) {
-            if (current.getWeakKey() == pKey.getWeak()) {
-                return current;
+        ChecksumPair p = null;
+        for(int i=0;i<hashArray.get(hashValue).size();i++){
+            p = (ChecksumPair) hashArray.get(hashValue).get(i);
+            if(p.getWeak()==pKey.getWeak() && Arrays.equals(p.getStrong(), pKey.getStrong())){
+                return p;
             }
-            current = current.next;
         }
         return null;
     }
 
     /**
-     * Method used to find a ChecksumPair object in list using weakSum and strongSum
-     * @param pKey Object that we are finding
-     * @return Link Returns the link with object
+     * Simple method used to write out the content of hash table
      */
-    public Link findMatch(ChecksumPair pKey) {
-        Link current = first;
-        while (current != null) {
-            if (current.getWeakKey() == pKey.getWeak() &&
-                    Arrays.equals(current.getStrongKey(),pKey.getStrong())) {
-                return current;
+    public void displayTable(){
+        for(int l=0;l<hashArray.size();l++){
+            for(int i = 0;i<hashArray.get(l).size();i++){
+                System.out.println(l+". list: "
+                        +((ChecksumPair) (hashArray.get(l).get(i))).toString());
             }
-            current = current.next;
         }
-        return null;
-    }
-
-    /**
-     * Method used to display list
-     */
-    public void displayList() {
-        System.out.print("List: ");
-        Link current = first;
-        while (current != null) {
-            current.displayLink();
-            current = current.next;
-        }
-        System.out.println();
-    }
+    } 
 }
