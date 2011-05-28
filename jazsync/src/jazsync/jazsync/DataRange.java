@@ -1,6 +1,6 @@
 /*
    DataRange: String format of block range for http request
-   Copyright (C) 2011 Tomas Hlavnicka <hlavntom@fel.cvut.cz>
+   Copyright (C) 2011 Tomáš Hlavnička <hlavntom@fel.cvut.cz>
 
    This file is a part of Jazsync.
 
@@ -25,6 +25,10 @@
 
 package jazsync.jazsync;
 
+/**
+ * Block range
+ * @author Tomáš Hlavnička
+ */
 public class DataRange {
     private long start;
     private long end;
@@ -44,7 +48,7 @@ public class DataRange {
     }
 
     /**
-     * Returns offset where block starts in the final file
+     * Returns offset where block starts in the complete file
      * @return Offset where block starts
      */
     public long getOffset(){

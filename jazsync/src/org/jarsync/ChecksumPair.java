@@ -216,7 +216,7 @@ public class ChecksumPair implements Cloneable, java.io.Serializable {
 
    /**
     * Hashcode is produced from summing 4bytes of weakSum into 2bytes
-    * @return
+    * @return Hash value of weaksum
     */
     @Override
    public int hashCode() {

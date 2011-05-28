@@ -27,7 +27,6 @@ package jazsync.jazsync;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -77,6 +76,7 @@ public class FileMaker {
     private boolean rangeQueue;
     private double complete;
     private String inputFileName;
+    private DecimalFormat df = new DecimalFormat("#.##");
 
     public FileMaker(String[] args) {
          mfr = new MetaFileReader(args);
@@ -84,6 +84,8 @@ public class FileMaker {
          fileMap = new long[mfr.getBlockCount()];
          Arrays.fill(fileMap, -1);
          fileOffset=0;
+         df.setDecimalFormatSymbols(DecimalFormatSymbols.getInstance(Locale.US));
+         df.setRoundingMode(RoundingMode.DOWN);
          inputFileName=mfr.getInputFile();
          if(inputFileName==null){
              inputFileName=mfr.getFilename();
@@ -104,6 +106,9 @@ public class FileMaker {
 
     }
 
+    /**
+     * Opens a working connection
+     */
     private void openConnection(){
         if(mfr.getUrl().startsWith("http://")){     //absolute URL path to file
             http = new HttpConnection(mfr.getUrl());
@@ -123,6 +128,9 @@ public class FileMaker {
         }
     }
 
+    /**
+     * Downloads a whole file in case that there were no relevant data found
+     */
     private void getWholeFile(){
         openConnection();
         System.out.println("No relevant data found, downloading whole file.");
@@ -143,6 +151,11 @@ public class FileMaker {
         http.closeConnection();
     }
 
+    /**
+     * URL parser, in case that metafile contains relative path
+     * @param link an URL to parse
+     * @return Absolute URL
+     */
     private String urlParser(String link){
         String newUrl=null;
         try {
@@ -160,8 +173,12 @@ public class FileMaker {
         return newUrl;
     }
 
+    /**
+     * Method for completing file
+     */
     private void fileMaker() {
         try {
+            long allData=0;
             double a=10;
             int range = 0;
             int blockLength = 0;
@@ -196,6 +213,7 @@ public class FileMaker {
                         http.sendRequest();
                         http.getResponseHeader();
                         data = http.getResponseBody(mfr.getBlocksize());
+                        allData+=http.getAllTransferedDataLength();
                     }
                     if ((i * mfr.getBlocksize() + mfr.getBlocksize()) < mfr.getLength()) {
                         blockLength = mfr.getBlocksize();
@@ -225,10 +243,14 @@ public class FileMaker {
                 System.out.println("used " + (mfr.getLength() - (mfr.getBlocksize() * missing)) + " " + "local, fetched " + (mfr.getBlocksize() * missing));
                 new File(mfr.getFilename()).renameTo(new File(mfr.getFilename() + ".zs-old"));
                 newFile.renameTo(new File(mfr.getFilename()));
+                allData+=mfr.getLengthOfMetafile();
+                System.out.println("really downloaded "+allData);
+                double overhead = ((double)(allData-(mfr.getBlocksize() * missing))/((double)(mfr.getBlocksize() * missing)))*100;
+                System.out.println("overhead: "+df.format(overhead)+"%");
             } else {
                 System.out.println("\nverifying download...checksum don't match");
                 System.out.println("Deleting temporary file");
-                //newFile.delete();
+                newFile.delete();
                 System.exit(1);
             }
         } catch (IOException ex) {
@@ -238,10 +260,11 @@ public class FileMaker {
     }
 
     /**
-     *  Misto serioveho stahovani si projedem cely fileMap, dokud nenasbirame
-     *  maximalne X chybejicich bloku, o ty si pozadame a budeme je drzet v pameti.
-     *  Postupne je pak budeme z pameti pri spravnych prilezitostech psat do souboru,
-     *  dokud vsechno z pameti nevypiseme. Nasledne muzeme s pruzkumem fileMap pokracovat.
+     * Instead of downloading single blocks, we can look into fieMap and collect
+     * amount of missing blocks or end of map accurs. Single ranges are stored in
+     * ArrayList
+     * @param i Offset in fileMap where to start looking
+     * @return ArrayList with ranges for requesting
      */
     private ArrayList<DataRange> rangeLookUp(int i){
         ArrayList<DataRange> ranges = new ArrayList<DataRange>();
@@ -280,10 +303,7 @@ public class FileMaker {
     }
 
     /**
-     *
-     * @throws NoSuchAlgorithmException
-     * @throws FileNotFoundException
-     * @throws IOException
+     * Reads file and map it's data into the fileMap.
      */
     private void mapMatcher(){
         InputStream is = null;
@@ -376,15 +396,11 @@ public class FileMaker {
                 }
             }
 
-            DecimalFormat df = new DecimalFormat("#.##");
-            df.setDecimalFormatSymbols(DecimalFormatSymbols.getInstance(Locale.US));
-            df.setRoundingMode(RoundingMode.DOWN);
             System.out.println();
             complete = matchControl();
             System.out.println("Target " + df.format(complete) + "% complete.");
             fileMap[fileMap.length-1]=-1;
             is.close();
-//            System.out.println(Arrays.toString(fileMap));
         } catch (IOException ex) {
             System.out.println("Can't read seed file, check your permissions");
             System.exit(1);
@@ -436,8 +452,8 @@ public class FileMaker {
 
     /**
      * Method is used to draw a progress bar of
-     * how much we already read from file.
-     * @param i How much data we already read (value in percents)
+     * how far we are in file.
+     * @param i How much data we already progressed (value in percents)
      */
     private void progressBar(double i){
         if(i>=10){
@@ -499,24 +515,22 @@ public class FileMaker {
     }
 
     /**
-     *
-     * @param weakSum
-     * @param strongSum
-     * @return
+     * Looks into hash table and check if got a hit
+     * @param weakSum Weak rolling checksum
+     * @param strongSum Strong MD4 checksum
+     * @return True if we got a hit
      */
     private boolean hashLookUp(int weakSum, byte[] strongSum){
         ChecksumPair p;
         if(strongSum==null){
             p = new ChecksumPair(weakSum);
             ChecksumPair link = hashtable.find(p);
-            //Link link = hashtable.find(p);
             if(link!=null){
                 return true;
             }
         } else {
             p = new ChecksumPair(weakSum, strongSum);
             ChecksumPair link = hashtable.findMatch(p);
-            //Link link = hashtable.findMatch(p);
             int seq;
             if(link!=null){
                /** V pripade, ze nalezneme shodu si zapiseme do file mapy offset

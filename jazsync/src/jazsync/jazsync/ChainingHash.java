@@ -1,7 +1,7 @@
 /* ChainingHash.java
 
    ChainingHash: Chaining hash table for storing checksums from metafile
-   Copyright (C) 2011 Tomas Hlavnicka <hlavntom@fel.cvut.cz>
+   Copyright (C) 2011 Tomáš Hlavnička <hlavntom@fel.cvut.cz>
 
    This file is a part of Jazsync.
 
@@ -37,6 +37,7 @@ import org.jarsync.ChecksumPair;
 public class ChainingHash {
     private ArrayList<ArrayList> hashArray;
     private int arraySize;
+    private int index;
 
     /**
      * Initializing chaining hash table of <code>size</code>
@@ -88,6 +89,7 @@ public class ChainingHash {
         for(int i=0;i<hashArray.get(hashValue).size();i++){
             p = (ChecksumPair) hashArray.get(hashValue).get(i);
             if(p.getWeak()==pKey.getWeak()){
+                index = i;
                 return p;
             }
         }
@@ -101,7 +103,12 @@ public class ChainingHash {
      */
     public ChecksumPair findMatch(ChecksumPair pKey){
         int hashValue = hashFunction(pKey);
-        ChecksumPair p = null;
+        ChecksumPair p = (ChecksumPair) hashArray.get(hashValue).get(index);
+        if(p.getWeak()==pKey.getWeak() && Arrays.equals(p.getStrong(), pKey.getStrong())){
+            return p;
+        } else {
+            p = null;
+        }
         for(int i=0;i<hashArray.get(hashValue).size();i++){
             p = (ChecksumPair) hashArray.get(hashValue).get(i);
             if(p.getWeak()==pKey.getWeak() && Arrays.equals(p.getStrong(), pKey.getStrong())){

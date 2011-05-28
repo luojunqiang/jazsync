@@ -52,6 +52,8 @@ public class HttpConnection {
     private byte[] boundaryBytes;
     private long contLen;
 
+    private long allData = 0;
+
     public HttpConnection(String url) {
         try {
             address = new URL(url);
@@ -186,6 +188,7 @@ public class HttpConnection {
         } catch (IOException e) {
             failed(address.toString());
         }
+        allData+=contLen;
 
         //pripad, kdy data obsahuji hranice (code 206 - partial content)
         if(boundary!=null){
@@ -205,6 +208,7 @@ public class HttpConnection {
                                     System.arraycopy(bytes, dataBegin(bytes,i), rangeBytes, range, blockLength);
                                 } catch (ArrayIndexOutOfBoundsException e){
                                     /*osetreni vyjimky v pripade kopirovani kratsiho bloku dat */
+                                    System.arraycopy(bytes, dataBegin(bytes,i), rangeBytes, range, bytes.length-dataBegin(bytes,i));
                                 }
                                 range+=blockLength;
                             }
@@ -244,6 +248,7 @@ public class HttpConnection {
     public String getResponseHeader(){
         String header="";
         Map responseHeader = connection.getHeaderFields();
+
             for (Iterator iterator = responseHeader.keySet().iterator(); iterator.hasNext();) {
                 String key = (String) iterator.next();
                 if(key!=null) {
@@ -258,6 +263,7 @@ public class HttpConnection {
                 }
                 header+="\n";
             }
+        allData+=header.length();
         return header;
     }
 
@@ -303,6 +309,10 @@ public class HttpConnection {
         System.out.println("Failed on url "+url);
         System.out.println("Could not read file from URL "+url);
         System.exit(1);
+    }
+
+    public long getAllTransferedDataLength(){
+        return allData;
     }
 
 }

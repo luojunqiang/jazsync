@@ -61,7 +61,7 @@ public interface RollingChecksum extends Cloneable, java.io.Serializable {
     * Update the checksum with a single byte. This is where the
     * "rolling" method is used.
     *
-    * @param bt The next byte.
+    * @param b The next byte.
     */
    void roll(byte b);
 

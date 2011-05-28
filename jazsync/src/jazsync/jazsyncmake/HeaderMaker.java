@@ -1,7 +1,7 @@
 /* HeaderMaker.java
 
    HeaderMaker: Simple header-maker for metafiles
-   Copyright (C) 2011 Tomas Hlavnicka <hlavntom@fel.cvut.cz>
+   Copyright (C) 2011 Tomáš Hlavnička <hlavntom@fel.cvut.cz>
 
    This file is a part of Jazsync.
 
@@ -31,7 +31,10 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 import jazsync.jazsync.SHA1;
-
+/**
+ * Simple class for creating headers for metafile
+ * @author Tomáš Hlavnička
+ */
 public class HeaderMaker {
 /*
 zsync: 0.6.1
@@ -44,7 +47,7 @@ URL: http://i.iinfo.cz/files/root/240/tinycore.iso
 SHA-1: 5944ec77b9b0f2d6b8212d142970117f5801430a
 */
 
-    /** Nutne dodelat hlavicky tykajici se komprimovanych streamu
+    /** Dodelat hlavicky tykajici se komprimovanych streamu
      * ++++ Z-URL, Z-Filename, Z-Map2, Recompress, Safe
      */
     private String Version="zsync: ";
@@ -59,10 +62,6 @@ SHA-1: 5944ec77b9b0f2d6b8212d142970117f5801430a
     private String ZMAP2="Z-Map2: ";
     private SHA1 sha1;
 
-    private int blocksize;
-    private String filename;
-    private long length;
-    private String url;
     private int seq_num=1;
     private int rsum_bytes=4;
     private int checksum_bytes=16;
@@ -73,29 +72,21 @@ SHA-1: 5944ec77b9b0f2d6b8212d142970117f5801430a
         this.mtime=file.lastModified();
         if(filename==null){
             Filename+=file.getName();   //default
-            this.filename=file.getName();
         } else {
             Filename+=filename;         //new file name
-            this.filename=filename;
         }
 
-        MTime+=now("EEE, dd MMM yyyy HH:mm:ss Z");
+        MTime+=setMTime("EEE, dd MMM yyyy HH:mm:ss Z");
         Length+=file.length();
-        length=file.length();
 
         if(url==null){
             URL+=file.getName();        //default
-            this.url=file.getName();
         } else {
             URL+=url;                   //new url
-            this.url=url;
         }
 
-        if(blocksize==2048){
-            Blocksize+="2048";          //default
-        } else if (isPowerOfTwo(blocksize)) {
-            Blocksize+=blocksize;       //new blocksize
-            this.blocksize=blocksize;
+        if (isPowerOfTwo(blocksize)) {
+            Blocksize+=blocksize;
         } else {
             System.out.println("Blocksize must be a power of 2 (512, 1024, 2048, ...)");
             System.exit(1);
@@ -108,7 +99,12 @@ SHA-1: 5944ec77b9b0f2d6b8212d142970117f5801430a
         sha1 = new SHA1(file.toString());
         SHA1+=sha1.SHA1sum();
     }
-    
+
+    /**
+     * Checks if <code>number</code> is power of two
+     * @param number Number to be checked
+     * @return Boolean value
+     */
     private boolean isPowerOfTwo(int number){
         boolean isPowerOfTwo = true;
         while(number>1){
@@ -123,13 +119,22 @@ SHA-1: 5944ec77b9b0f2d6b8212d142970117f5801430a
     }
 
 
-    private String now(String dateFormat) {
+    /**
+     * Converts time (ms) into formated MTime using <code>dateFormat</code>
+     * @param dateFormat MTime format
+     * @return Formated date of MTime
+     */
+    private String setMTime(String dateFormat) {
         Date date = new Date();
         date.setTime(mtime);
         SimpleDateFormat sdf = new SimpleDateFormat(dateFormat,Locale.US);
         return sdf.format(date);
     }
 
+    /**
+     * Method builds header from key values
+     * @return Full header in String format
+     */
     public String getFullHeader(){
         StringBuilder sb = new StringBuilder("");
         sb.append(Version).append("\n");

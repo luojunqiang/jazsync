@@ -52,7 +52,7 @@ public class MetaFileReader {
     public int FILE_FLAG = 0;
 
     /** The short options. */
-    private final String OPTSTRING = "A:r:u:k:i";
+    private final String OPTSTRING = "A:r:u:k:i:";
 
     /** The long options. */
     private final LongOpt[] LONGOPTS = new LongOpt[] {
@@ -93,7 +93,7 @@ public class MetaFileReader {
     private boolean downMetaFile=false;
     private String extraInputFile;
     private int ranges=100;
-
+    private long downloadedMetafile=0;
     /** Option variables */
 
     /**
@@ -149,7 +149,6 @@ public class MetaFileReader {
         if (args.length > g.getOptind()) {
             filename = args[g.getOptind()];
             metafile=new File(filename);
-
             /*
              * zjistime jestli soubor na disku existuje, pokud ne, presvedcime
              * se zda to tedy je URL s definovanym http protokolem, pokud ne,
@@ -169,6 +168,7 @@ public class MetaFileReader {
                 http.sendRequest();
                 http.getResponseHeader();
                 byte[] mfBytes=http.getResponseBody(0);
+                downloadedMetafile = mfBytes.length;
                 if(downMetaFile){
                     try {
                         OutputStream out = new FileOutputStream(new File(localMetafile));
@@ -180,7 +180,7 @@ public class MetaFileReader {
                 }
                 http.closeConnection();
                 readMetaFile(convertBytesToString(mfBytes));
-                blockNum = Math.round((float)mf_length / (float)mf_blocksize);
+                blockNum = (int) Math.ceil((double)mf_length / (double)mf_blocksize);
                 checkOutputFile();
                 fillHashTable(mfBytes);
             } else {
@@ -214,6 +214,10 @@ public class MetaFileReader {
         }
     }
 
+    /**
+     * Method for checking consistency of a file
+     * @param file File to check
+     */
     private void SHA1check(File file){
         SHA1 sha1=new SHA1(file.getPath());
         if(sha1.SHA1sum().equals(mf_sha1)){
@@ -587,6 +591,14 @@ public class MetaFileReader {
      */
     public String getInputFile(){
         return extraInputFile;
+    }
+    
+    /**
+     * Length of DOWNLOADED metafile
+     * @return Length of metafile
+     */
+    public long getLengthOfMetafile(){
+        return downloadedMetafile;
     }
 
 }

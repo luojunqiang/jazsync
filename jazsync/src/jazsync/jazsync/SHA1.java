@@ -31,6 +31,10 @@ import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
+/**
+ * Class for SHA-1 sum
+ * @author Tomáš Hlavnička
+ */
 public class SHA1 {
     private String filename;
     private FileInputStream fis;
@@ -38,20 +42,24 @@ public class SHA1 {
     private StringBuilder sb;
 
     /**
-     * Konstruktor SHA1
-     * @param filename Nazev a cesta k souboru
+     * Constructor SHA1
+     * @param filename Name and path to a file
      */
     public SHA1(String filename){
         this.filename=filename;
     }
 
+    /**
+     * Constructor SHA1
+     * @param file File for calculation
+     */
     public SHA1(File file){
         this.filename=file.getName();
     }
 
     /**
-     * Vypocet SHA1
-     * @return String s kontrolnim souctem
+     * Calculates SHA1
+     * @return String with hash value
      */
     public String SHA1sum(){
         try {
