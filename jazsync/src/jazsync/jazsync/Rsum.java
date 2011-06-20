@@ -75,8 +75,9 @@ public class Rsum implements RollingChecksum, Cloneable, java.io.Serializable {
      */
     @Override
     public void roll(byte newByte) {
-        a -= unsignedByte(buffer[oldByte]);
-        b -= blockLength * unsignedByte(buffer[oldByte]);
+        short oldUnsignedB=unsignedByte(buffer[oldByte]);
+        a -= oldUnsignedB;
+        b -= blockLength * oldUnsignedB;
         a += unsignedByte(newByte);
         b += a;
         buffer[oldByte]=newByte;
@@ -98,9 +99,11 @@ public class Rsum implements RollingChecksum, Cloneable, java.io.Serializable {
     public void check(byte[] buf, int offset, int length) {
         reset();
         int index=offset;
+        short unsignedB;
         for(int i=length;i>0;i--){
-            a+=unsignedByte(buf[index]);
-            b+=i*unsignedByte(buf[index]);
+            unsignedB=unsignedByte(buf[index]);
+            a+=unsignedB;
+            b+=i*unsignedB;
             index++;
         }
     }
@@ -118,9 +121,11 @@ public class Rsum implements RollingChecksum, Cloneable, java.io.Serializable {
     public void first(byte[] buf, int offset, int length) {
         reset();
         int index=offset;
+        short unsignedB;
         for(int i=length;i>0;i--){
-            a+=unsignedByte(buf[index]);
-            b+=i*unsignedByte(buf[index]);
+            unsignedB=unsignedByte(buf[index]);
+            a+=unsignedB;
+            b+=i*unsignedB;
             index++;
         }
         blockLength=length;
