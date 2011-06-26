@@ -339,6 +339,8 @@ public class FileMaker {
             System.out.print("Reading " + inputFileName + ": ");
             System.out.print("|----------|");
             double a = 10;
+            boolean found=false;
+            int skip=0;
             while (true) {
                 n = is.read(fileBuffer, 0, len);
                 if (firstBlock) {
@@ -346,7 +348,11 @@ public class FileMaker {
                     bufferOffset = mfr.getBlocksize();
                     if (hashLookUp(updateWeakSum(weakSum), null)) {
                         strongSum = gen.generateStrongSum(fileBuffer, 0, mfr.getBlocksize());
-                        hashLookUp(updateWeakSum(weakSum), strongSum);
+                        found = hashLookUp(updateWeakSum(weakSum), strongSum);
+                        if(found){
+                            skip=mfr.getBlocksize()-1;
+                            found=false;
+                        }
                     }
                     fileOffset++;
                     firstBlock = false;
@@ -357,27 +363,36 @@ public class FileMaker {
                         newByte = 0;
                     }
                     weakSum = gen.generateRollSum(newByte);
-                    if (hashLookUp(updateWeakSum(weakSum), null)) {
-                        if (fileOffset + mfr.getBlocksize() > fileLength) {
-                            if (n > 0) {
-                                Arrays.fill(fileBuffer, n, fileBuffer.length, (byte) 0);
+                    if(skip==0) {
+                        if (hashLookUp(updateWeakSum(weakSum), null)) {
+                            if (fileOffset + mfr.getBlocksize() > fileLength) {
+                                if (n > 0) {
+                                    Arrays.fill(fileBuffer, n, fileBuffer.length, (byte) 0);
+                                } else {
+                                    int offset = fileBuffer.length - mfr.getBlocksize() + bufferOffset + 1;
+                                    System.arraycopy(fileBuffer, offset, blockBuffer, 0, fileBuffer.length - offset);
+                                    Arrays.fill(blockBuffer, fileBuffer.length - offset, blockBuffer.length, (byte) 0);
+                                }
+                            }
+                            if ((bufferOffset - mfr.getBlocksize() + 1) < 0) {
+                                if (n > 0) {
+                                    System.arraycopy(backBuffer, backBuffer.length + bufferOffset - mfr.getBlocksize() + 1, blockBuffer, 0, mfr.getBlocksize() - bufferOffset - 1);
+                                    System.arraycopy(fileBuffer, 0, blockBuffer, mfr.getBlocksize() - bufferOffset - 1, bufferOffset + 1);
+                                }
+                                strongSum = gen.generateStrongSum(blockBuffer, 0, mfr.getBlocksize());
+                                found = hashLookUp(updateWeakSum(weakSum), strongSum);
                             } else {
-                                int offset = fileBuffer.length - mfr.getBlocksize() + bufferOffset + 1;
-                                System.arraycopy(fileBuffer, offset, blockBuffer, 0, fileBuffer.length - offset);
-                                Arrays.fill(blockBuffer, fileBuffer.length - offset, blockBuffer.length, (byte) 0);
+                                strongSum = gen.generateStrongSum(fileBuffer, bufferOffset - mfr.getBlocksize() + 1, mfr.getBlocksize());
+                                found = hashLookUp(updateWeakSum(weakSum), strongSum);
+                            }
+
+                            if(found){
+                                skip=mfr.getBlocksize()-1;
+                                found=false;
                             }
                         }
-                        if ((bufferOffset - mfr.getBlocksize() + 1) < 0) {
-                            if (n > 0) {
-                                System.arraycopy(backBuffer, backBuffer.length + bufferOffset - mfr.getBlocksize() + 1, blockBuffer, 0, mfr.getBlocksize() - bufferOffset - 1);
-                                System.arraycopy(fileBuffer, 0, blockBuffer, mfr.getBlocksize() - bufferOffset - 1, bufferOffset + 1);
-                            }
-                            strongSum = gen.generateStrongSum(blockBuffer, 0, mfr.getBlocksize());
-                            hashLookUp(updateWeakSum(weakSum), strongSum);
-                        } else {
-                            strongSum = gen.generateStrongSum(fileBuffer, bufferOffset - mfr.getBlocksize() + 1, mfr.getBlocksize());
-                            hashLookUp(updateWeakSum(weakSum), strongSum);
-                        }
+                    } else {
+                        skip--;
                     }
                     fileOffset++;
                     if ((((double) fileOffset / (double) fileLength) * 100) >= a) {
